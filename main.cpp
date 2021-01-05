@@ -25,77 +25,75 @@
 #define LED_ON  1
 #define LED_OFF 0
 
+// DHT11 uses a simplified single-wire bidirectional communication protocol.
+// It follows a Master/Slave paradigm with the MCU observing these states:
+// WAITING, READING.
+static const uint32_t DHT11_DEVICE_WAITING(0UL);
+static const uint32_t DHT11_DEVICE_READING(1UL);
+
 // TBD Nuertey Odzeyem; ensure to protect all prints with the Utility::g_STDIOMutex
 // TBD Nuertey Odzeyem; move all the DHT11 processing into its own function or lambda
 // TBD Nuertey Odzeyem; consider moving the LCD 16x2 outputting too into its own function or lambda
 
-DHT11       g_DHT11(PB_8);     // DHT11 --> PB_8
+DHT11             g_DHT11(PB_8);     // DHT11 --> PB_8
+                  
+DigitalOut        g_LEDGreen(LED1);
+DigitalOut        g_LEDBlue(LED2);
+DigitalOut        g_LEDRed(LED3);
 
-DigitalOut g_LEDGreen(LED1);
-DigitalOut g_LEDBlue(LED2);
-DigitalOut g_LEDRed(LED3);
+// Use the LowPowerTicker interface to set up a recurring interrupt. 
+// It calls a function repeatedly and at a specified rate.
+LowPowerTicker    g_Ticker;
 
-Ticker      newAction;
+volatile uint32_t g_DeviceState;     // Indicates when to read in a new sample.
 
-volatile uint32_t myState;     // Indicates when to obtain a new sample.
-
-void changeDATA(void);
+void ChangeDeviceState();
 
 void DHT11SensorAcquisition()
 {
-    char                  myChecksum[] = "Ok";
     DHT11::DHT11_status_t aux;
-    DHT11::DHT11_data_t   g_DHT11_Data;
+    DHT11::DHT11_data_t g_DHT11_Data;
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
     ThisThread::sleep_for(3);
     g_LEDGreen = LED_OFF;
 
-    // DHT11 starts: Release the bus
-    aux  =   g_DHT11.DHT11_Init ();
+    // DHT11 processing begins. Therefore first release the single-wire 
+    // bidirectional bus:
+    aux = g_DHT11.DHT11_Init();
 
-
-    myState  =   0UL; // Reset the variable
-    newAction.attach( &changeDATA, 1U ); // the address of the function to be attached ( changeDATA ) and the interval ( 1s )
-
+    g_DeviceState = DHT11_DEVICE_WAITING;
+    g_Ticker.attach(&ChangeDeviceState, 1U); // the address of the function to be attached ( changeDATA ) and the interval ( 1s )
 
     // Let the callbacks take care of everything
     while(1)
     {
         sleep();
 
-        if ( myState == 1UL )
+        if (g_DeviceState == DHT11_DEVICE_READING)
         {
-            myled = 1U;
+            // Indicate that we are reading from DHT11 with blue LED.
+            g_LEDBlue = LED_ON;
 
             // Get a new data
-            aux  =   g_DHT11.DHT11_GetData ( &g_DHT11_Data );
+            aux = g_DHT11.DHT11_GetData(&g_DHT11_Data);
 
-            // Check checksum to validate data
-            if ( g_DHT11_Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK )
-            {
-                myChecksum[0]  =   'O';
-                myChecksum[1]  =   'k';
-            }
-            else
-            {
-                myChecksum[0]  =   'E';
-                myChecksum[1]  =   'r';
-            }
+            // Depend on checksum in trusting data read from DHT11 device.
+            std::string((g_DHT11_Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK) ? "PASSED" : "FAILED") checksum;
 
-            // Send data through the UART
-            printf("T: %d C | RH: %d %% | Checksum: %s\r\n", g_DHT11_Data.temperature, g_DHT11_Data.humidity, myChecksum);
+            Utility::g_STDIOMutex.lock();
+            printf("Temperature: %d\tHumidity : %d%% RH\tChecksum: %s\r\n", g_DHT11_Data.temperature, g_DHT11_Data.humidity, checksum.c_str());
+            Utility::g_STDIOMutex.unlock();
 
+            g_LEDBlue = LED_OFF;
 
-            // Reset the variables
-            myState  =   0UL;
-            myled    =   0U;
+            g_DeviceState = DHT11_DEVICE_WAITING;
         }
     }
 }
 
-void changeDATA(void)
+void ChangeDeviceState()
 {
-    myState = 1UL;
+    g_DeviceState = DHT11_DEVICE_READING;
 }
