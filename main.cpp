@@ -2,9 +2,9 @@
 * @file      main.cpp
 *
 *    An ARM Mbed application that illustrates how a NUCLEO-F767ZI can be 
-*    connected to a DHT11 Temperature and Humidity sensor and an LCD 16x2
-*    display, all via a breadboard, to periodically obtain temperature 
-*    and humidity readings.
+*    connected to a DHT11 Temperature and Humidity sensor and values 
+*    output to an LCD 16x2 display, all mocked-up via a breadboard. This
+*    allows us to periodically obtain temperature and humidity readings.
 *
 * @brief   Input: DHT11 temperature/humidity readings. Output: LCD 16x2. 
 * 
@@ -20,6 +20,7 @@
 ***********************************************************************/
 #include "mbed.h"
 #include "DHT11.h"
+#include "LCD_H.h"
 #include "Utilities.h"
 
 #define LED_ON  1
@@ -39,7 +40,11 @@ static const uint32_t DHT11_DEVICE_READING(1UL);
 // TBD Nuertey Odzeyem; consider moving the LCD 16x2 outputting too into its own function or lambda
 // TBD Nuertey Odzeyem; check all pin definitions to make sure that they actually match your physical mock-up.
 
+// DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line serial.
 DHT11             g_DHT11(PB_8);     // DHT11 --> PB_8
+
+// LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit interface.
+LCD               g_LCD16x2(p5, p6, p7, p8, p9, p10); // RS, RW, D4, D5, D6, D7
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
@@ -111,6 +116,7 @@ void DHT11SensorAcquisition()
     }
 
     g_DeviceState = DHT11_DEVICE_WAITING;
+    g_LCD16x2.init();
 
     // Interrupt us every second to wake us up:
     g_PeriodicStateChanger.attach(&AlertToRead, DHT11_DEVICE_STATE_CHANGE_RATE);
@@ -147,6 +153,17 @@ void DHT11SensorAcquisition()
             }
             else
             {
+                g_LCD16x2.clr();
+
+                g_LCD16x2.setCursor(0, 0);
+                g_LCD16x2.wtrString("Temp: ");
+                g_LCD16x2.wtrNumber(static_cast<float>(theDHT11Data.temperature));
+                g_LCD16x2.wtrString(" C");
+                g_LCD16x2.setCursor(1, 0);
+                g_LCD16x2.wtrString("Humi: ");
+                g_LCD16x2.wtrNumber(static_cast<float>(theDHT11Data.humidity));
+                g_LCD16x2.wtrString(" % RH");
+
                 // Depend on checksum in trusting data read from DHT11 device.
                 std::string((theDHT11Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK) ? "PASSED" : "FAILED") checksum;
 
