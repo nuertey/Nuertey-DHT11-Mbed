@@ -177,3 +177,47 @@ void DHT11SensorAcquisition()
         }
     }
 }
+
+// Do not return from main() as in  Embedded Systems, there is nothing
+// (conceptually) to return to. A crash will occur otherwise!
+int main()
+{
+    printf("\r\n\r\nNuertey-DHT11-Mbed - Beginning... \r\n\r\n");
+
+    Utility::InitializeGlobalResources();
+
+    printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
+    printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
+    printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
+    printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
+    
+    Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
+                                       CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
+                                       DHT11SensorAcquisition);
+    if (!Utility::gs_CloudCommunicationsEventIdentifier)
+    {
+        printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
+    }
+
+    // To further save RAM, as we have no other work to do in main() after
+    // initialization, we will dispatch the global event queue from here,
+    // thus avoiding the need to create a separate dispatch thread (context).
+
+    // The dispatch function provides the context for running
+    // of the queue and can take a millisecond timeout to run for a
+    // fixed time or to just dispatch any pending events.
+    printf("\r\nAbout to dispatch regular and periodic events... \r\n");
+    Utility::gs_MasterEventQueue.dispatch_forever();
+    
+    Utility::g_STDIOMutex.lock();
+    printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
+    Utility::g_STDIOMutex.unlock();
+
+    // As we are done dispatching, reset the event id so that potential
+    // callbacks do not attempt to perform actions on the Master Event Queue.
+    Utility::gs_CloudCommunicationsEventIdentifier = 0;
+
+    Utility::ReleaseGlobalResources();
+
+    printf("\r\n\r\nNuertey-DHT11-Mbed Application - Done.\r\n\r\n");
+}
