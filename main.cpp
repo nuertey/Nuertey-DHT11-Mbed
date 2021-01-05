@@ -30,18 +30,23 @@ static const uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 seconds.
 static const float    DHT11_DEVICE_STATE_CHANGE_RATE(1.0);      // 1 second.
 
 // DHT11 uses a simplified single-wire bidirectional communication protocol.
-// It follows a Master/Slave paradigm with the MCU observing these states:
+// It follows a Master/Slave paradigm [NUCLEO-F767ZI=Master, DHT11=Slave] 
+// with the MCU observing these states:
+//
 // WAITING, READING.
 static const uint32_t DHT11_DEVICE_WAITING(0UL);
 static const uint32_t DHT11_DEVICE_READING(1UL);
 
-// TBD Nuertey Odzeyem; ensure to protect all prints with the Utility::g_STDIOMutex
-// TBD Nuertey Odzeyem; move all the DHT11 processing into its own function or lambda
-// TBD Nuertey Odzeyem; consider moving the LCD 16x2 outputting too into its own function or lambda
 // TBD Nuertey Odzeyem; check all pin definitions to make sure that they actually match your physical mock-up.
 
 // DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line serial.
-DHT11             g_DHT11(PB_8);     // DHT11 --> PB_8
+//
+// Connector: CN7 
+// Pin      : 14 
+// Pin Name : D11
+// STM32 Pin: PA7
+// Function : SPI1_MOSI
+DHT11             g_DHT11(PA7);
 
 // LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit interface.
 LCD               g_LCD16x2(p5, p6, p7, p8, p9, p10); // RS, RW, D4, D5, D6, D7

@@ -100,7 +100,9 @@ namespace Utility
             // task of attempting to publish acquired sensor MQTT data.
             if (gs_SensorEventIdentifier)
             {
+                g_STDIOMutex.lock();
                 printf("Cancelling Sensor Acquisition Event on gs_MasterEventQueue!\r\n");
+                g_STDIOMutex.unlock();
                 gs_MasterEventQueue.cancel(gs_SensorEventIdentifier);
             }
 
