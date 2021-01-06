@@ -63,6 +63,7 @@
 * @copyright Copyright (c) 2021 Nuertey Odzeyem. All Rights Reserved.
 ***********************************************************************/
 #include "mbed.h"
+#include "DHT.h"
 #include "DHT11.h"
 #include "LCD_H.h"
 #include "Utilities.h"
@@ -70,16 +71,16 @@
 #define LED_ON  1
 #define LED_OFF 0
 
-static const uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 seconds.
-static const float    DHT11_DEVICE_STATE_CHANGE_RATE(1.0);      // 1 second.
+static const uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 milliseconds.
+static const float    DHT11_DEVICE_STATE_CHANGE_RATE(2.0);      // 2 milliseconds.
 
 // DHT11 uses a simplified single-wire bidirectional communication protocol.
 // It follows a Master/Slave paradigm [NUCLEO-F767ZI=Master, DHT11=Slave] 
 // with the MCU observing these states:
 //
 // WAITING, READING.
-static const uint32_t DHT11_DEVICE_WAITING(0UL);
-static const uint32_t DHT11_DEVICE_READING(1UL);
+//static const uint32_t DHT11_DEVICE_WAITING(0UL);
+//static const uint32_t DHT11_DEVICE_READING(1UL);
 
 // DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line
 // serial. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
@@ -90,7 +91,8 @@ static const uint32_t DHT11_DEVICE_READING(1UL);
 // Pin Name : D22
 // STM32 Pin: PB5
 // Signal   : SPI_B_MOSI
-DHT11             g_DHT11(PB_5);
+//DHT11             g_DHT11(PB_5);
+DHT               g_DHT11(PB_5, eType::DHT11);
 
 // LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit
 // interface. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
@@ -142,31 +144,35 @@ DigitalOut        g_LEDRed(LED3);
 // function repeatedly and at a specified rate. As we don't need 
 // microseconds precision anyway, leverage LowPowerTicker instead. 
 // Crucially, that would ensure that we do not block deep sleep mode.
-LowPowerTicker    g_PeriodicStateChanger;
+//LowPowerTicker    g_PeriodicStateChanger;
 
-volatile uint32_t g_DeviceState;     // Indicates when to read in a new sample.
+//volatile uint32_t g_DeviceState;     // Indicates when to read in a new sample.
 
 // ==========================================================
 // Free-Floating General Helper Functions To Be Used By All :
 // ==========================================================
-using DHT11StatusCodesMap_t = std::map<DHT11::DHT11_status_t, std::string>;
+using DHT11StatusCodesMap_t = std::map<eError, std::string>;
 using IndexElementDHT11_t   = DHT11StatusCodesMap_t::value_type;
 
 inline static auto make_dht11_error_codes_map()
 {
     DHT11StatusCodesMap_t eMap;
     
-    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_SUCCESS, std::string("\"Communication success\"")));
-    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_FAILURE, std::string("\"Communication failure\"")));
-    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_DATA_CORRUPTED, std::string("\"Checksum error\"")));
-    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_BUS_TIMEOUT, std::string("\"Bus response timeout/error\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_NONE, std::string("\"Communication success\"")));
+    eMap.insert(IndexElementDHT11_t(eError::BUS_BUSY, std::string("\"Communication failure - bus busy\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_NOT_PRESENT, std::string("\"Communication failure - sensor not present on bus\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_ACK_TOO_LONG, std::string("\"Communication failure - ack too long\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_SYNC_TIMEOUT, std::string("\"Communication failure - sync timeout\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_DATA_TIMEOUT, std::string("\"Communication failure - data timeout\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_CHECKSUM, std::string("\"Checksum error\"")));
+    eMap.insert(IndexElementDHT11_t(eError::ERROR_NO_PATIENCE, std::string("\"Communication failure - no patience\"")));
  
     return eMap;
 }
 
 static DHT11StatusCodesMap_t gs_DHT11StatusCodesMap = make_dht11_error_codes_map();
 
-inline std::string ToString(const DHT11::DHT11_status_t & key)
+inline std::string ToString(const eError & key)
 {
     return (gs_DHT11StatusCodesMap.at(key));
 }
@@ -174,15 +180,17 @@ inline std::string ToString(const DHT11::DHT11_status_t & key)
 // ==============================
 // Begin Actual Implementations :
 // ==============================
-void AlertToRead()
-{
-    g_DeviceState = DHT11_DEVICE_READING;
-}
+//void AlertToRead()
+//{
+//    g_DeviceState = DHT11_DEVICE_READING;
+//}
 
 void DHT11SensorAcquisition()
 {
-    DHT11::DHT11_status_t result;
-    DHT11::DHT11_data_t   theDHT11Data;
+    eError error;
+    float h = 0.0f, c = 0.0f, f = 0.0f, k = 0.0f, dp = 0.0f, dpf = 0.0f;
+//    DHT11::DHT11_status_t result;
+//    DHT11::DHT11_data_t   theDHT11Data;
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
@@ -191,23 +199,70 @@ void DHT11SensorAcquisition()
 
     // DHT11 processing begins. Therefore first release the single-wire 
     // bidirectional bus:
-    result = g_DHT11.DHT11_Init();
-    if (result != DHT11::DHT11_SUCCESS)
-    {
-        Utility::g_STDIOMutex.lock();
-        printf("Error! g_DHT11.DHT11_Init() returned: [%d] -> %s\n", 
-              result, ToString(result).c_str());
-        Utility::g_STDIOMutex.unlock();
-
-        return;
-    }
-
-    g_DeviceState = DHT11_DEVICE_WAITING;
-    g_LCD16x2.init();
+//    result = g_DHT11.DHT11_Init();
+//    if (result != DHT11::DHT11_SUCCESS)
+//    {
+//        Utility::g_STDIOMutex.lock();
+//        printf("Error! g_DHT11.DHT11_Init() returned: [%d] -> %s\n", 
+//              result, ToString(result).c_str());
+//        Utility::g_STDIOMutex.unlock();
+//
+//        return;
+//    }
+//
+//    g_DeviceState = DHT11_DEVICE_WAITING;
+//    g_LCD16x2.init();
 
     // Interrupt us every second to wake us up:
-    g_PeriodicStateChanger.attach(&AlertToRead, DHT11_DEVICE_STATE_CHANGE_RATE);
+//    g_PeriodicStateChanger.attach(&AlertToRead, DHT11_DEVICE_STATE_CHANGE_RATE);
+    while (1)
+    {
+        ThisThread::sleep_for(DHT11_DEVICE_STATE_CHANGE_RATE);
 
+        // Indicate that we are reading from DHT11 with blue LED.
+        g_LEDBlue = LED_ON;
+
+        error = g_DHT11.readData();
+        if (eError::ERROR_NONE == error)
+        {
+            c   = g_DHT11.ReadTemperature(eScale::CELCIUS);
+            f   = g_DHT11.ReadTemperature(eScale::FARENHEIT);
+            k   = g_DHT11.ReadTemperature(eScale::KELVIN);
+            h   = g_DHT11.ReadHumidity();
+            dp  = g_DHT11.CalcdewPoint(c, h);
+            dpf = g_DHT11.CalcdewPointFast(c, h);
+
+            g_LCD16x2.clr();
+
+            g_LCD16x2.setCursor(0, 0);
+            g_LCD16x2.wtrString("Temp: ");
+            g_LCD16x2.wtrNumber(c);
+            g_LCD16x2.wtrString(" C");
+            g_LCD16x2.setCursor(1, 0);
+            g_LCD16x2.wtrString("Humi: ");
+            g_LCD16x2.wtrNumber(h);
+            g_LCD16x2.wtrString(" % RH");
+
+            Utility::g_STDIOMutex.lock();
+            printf("\nTemperature in Kelvin: %4.2f, Celcius: %4.2f, Farenheit %4.2f\n", k, c, f);
+            printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
+            Utility::g_STDIOMutex.unlock();
+        }
+        else
+        {
+            g_LCD16x2.clr();
+            g_LCD16x2.setCursor(0, 0);
+            g_LCD16x2.wtrString("Error!");
+
+            Utility::g_STDIOMutex.lock();
+            printf("Error! g_DHT11.readData() returned: [%d] -> %s\n", 
+                      error, ToString(error).c_str());
+            Utility::g_STDIOMutex.unlock();
+        }
+
+        g_LEDBlue = LED_OFF;
+    }
+/*
     while (1)
     {
         // Power Management (sleep)
@@ -267,6 +322,7 @@ void DHT11SensorAcquisition()
             g_DeviceState = DHT11_DEVICE_WAITING;
         }
     }
+*/
 }
 
 // Do not return from main() as in  Embedded Systems, there is nothing

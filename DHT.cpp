@@ -30,6 +30,7 @@
  * THE SOFTWARE.
  */
 #include "DHT.h"
+#include "Utilities.h"
 
 #define DHT_DATA_BIT_COUNT 40
 
@@ -51,12 +52,12 @@ eError DHT::stall(DigitalInOut &io, int const level, int const max_time)
     {
         if (cnt > max_time)
         {
-            return ERROR_NO_PATIENCE;
+            return eError::ERROR_NO_PATIENCE;
         }
         cnt++;
         wait_us(1);
     }
-    return ERROR_NONE;
+    return eError::ERROR_NONE;
 }
 
 eError DHT::readData()
@@ -64,54 +65,61 @@ eError DHT::readData()
     uint8_t i = 0, j = 0, b = 0, data_valid = 0;
     uint32_t bit_value[DHT_DATA_BIT_COUNT] = {0};
 
-    eError err = ERROR_NONE;
+    eError err = eError::ERROR_NONE;
     time_t currentTime = time(NULL);
 
     DigitalInOut DHT_io(_pin);
 
     // IO must be in hi state to start
-    if (ERROR_NONE != stall(DHT_io, 0, 250))
+    if (eError::ERROR_NONE != stall(DHT_io, 0, 250))
     {
-        return BUS_BUSY;
+        return eError::BUS_BUSY;
     }
 
     // start the transfer
     DHT_io.output();
     DHT_io = 0;
     // only 500uS for DHT22 but 18ms for DHT11
-    (_DHTtype == 11) ? wait_ms(18) : wait(1);
+    if ((Utility::ToUnderlyingType(_DHTtype) & 8))
+    {
+        ThisThread::sleep_for(18);
+    }
+    else if ((Utility::ToUnderlyingType(_DHTtype) & 16))
+    {
+        ThisThread::sleep_for(1);
+    }
     DHT_io = 1;
     wait_us(30);
     DHT_io.input();
     // wait till the sensor grabs the bus
-    if (ERROR_NONE != stall(DHT_io, 1, 40))
+    if (eError::ERROR_NONE != stall(DHT_io, 1, 40))
     {
-        return ERROR_NOT_PRESENT;
+        return eError::ERROR_NOT_PRESENT;
     }
     // sensor should signal low 80us and then hi 80us
-    if (ERROR_NONE != stall(DHT_io, 0, 100))
+    if (eError::ERROR_NONE != stall(DHT_io, 0, 100))
     {
-        return ERROR_SYNC_TIMEOUT;
+        return eError::ERROR_SYNC_TIMEOUT;
     }
-    if (ERROR_NONE != stall(DHT_io, 1, 100))
+    if (eError::ERROR_NONE != stall(DHT_io, 1, 100))
     {
-        return ERROR_NO_PATIENCE;
+        return eError::ERROR_NO_PATIENCE;
     }
     // capture the data
     for (i = 0; i < 5; i++)
     {
         for (j = 0; j < 8; j++)
         {
-            if (ERROR_NONE != stall(DHT_io, 0, 75))
+            if (eError::ERROR_NONE != stall(DHT_io, 0, 75))
             {
-                return ERROR_DATA_TIMEOUT;
+                return eError::ERROR_DATA_TIMEOUT;
             }
             // logic 0 is 28us max, 1 is 70us
             wait_us(40);
             bit_value[i*8+j] = DHT_io;
-            if (ERROR_NONE != stall(DHT_io, 1, 50))
+            if (eError::ERROR_NONE != stall(DHT_io, 1, 50))
             {
-                return ERROR_DATA_TIMEOUT;
+                return eError::ERROR_DATA_TIMEOUT;
             }
         }
     }
@@ -141,7 +149,7 @@ eError DHT::readData()
     }
     else
     {
-        err = ERROR_CHECKSUM;
+        err = eError::ERROR_CHECKSUM;
     }
 
     return err;
@@ -149,23 +157,39 @@ eError DHT::readData()
 
 float DHT::CalcTemperature()
 {
-    int v;
+    int v = 0;
 
     switch (_DHTtype)
     {
-    case DHT11:
-        v = DHT_data[2];
-        return float(v);
-    case DHT22:
-        v = DHT_data[2] & 0x7F;
-        v *= 256;
-        v += DHT_data[3];
-        v /= 10;
-        if (DHT_data[2] & 0x80)
-            v *= -1;
-        return float(v);
+        case eType::DHT11:
+        case eType::SEN11301P:
+        case eType::RHT01:
+        {
+            v = DHT_data[2];
+            break;
+        }
+        case eType::DHT22:
+        case eType::AM2302:
+        case eType::SEN51035P:
+        case eType::RHT02:
+        case eType::RHT03:
+        {
+            v = DHT_data[2] & 0x7F;
+            v *= 256;
+            v += DHT_data[3];
+            v /= 10;
+            if (DHT_data[2] & 0x80)
+            {
+                v *= -1;
+            }
+            break;
+        }
+        default:
+        {
+            break;
+        }
     }
-    return 0;
+    return float(v);
 }
 
 float DHT::ReadHumidity()
@@ -212,9 +236,9 @@ float DHT::CalcdewPointFast(float const celsius, float const humidity)
 
 float DHT::ReadTemperature(eScale Scale)
 {
-    if (Scale == FARENHEIT)
+    if (Scale == eScale::FARENHEIT)
         return ConvertCelciustoFarenheit(_lastTemperature);
-    else if (Scale == KELVIN)
+    else if (Scale == eScale::KELVIN)
         return ConvertCelciustoKelvin(_lastTemperature);
     else
         return _lastTemperature;
@@ -222,19 +246,33 @@ float DHT::ReadTemperature(eScale Scale)
 
 float DHT::CalcHumidity()
 {
-    int v;
+    int v = 0;
 
     switch (_DHTtype)
     {
-    case DHT11:
-        v = DHT_data[0];
-        return float(v);
-    case DHT22:
-        v = DHT_data[0];
-        v *= 256;
-        v += DHT_data[1];
-        v /= 10;
-        return float(v);
+        case eType::DHT11:
+        case eType::SEN11301P:
+        case eType::RHT01:
+        {
+            v = DHT_data[0];
+            break;
+        }
+        case eType::DHT22:
+        case eType::AM2302:
+        case eType::SEN51035P:
+        case eType::RHT02:
+        case eType::RHT03:
+        {
+            v = DHT_data[0];
+            v *= 256;
+            v += DHT_data[1];
+            v /= 10;
+            break;
+        }
+        default:
+        {
+            break;
+        }
     }
-    return 0;
+    return float(v);
 }

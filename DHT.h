@@ -33,21 +33,19 @@
 
 #include "mbed.h"
 
-typedef enum eType eType;
-enum eType
+enum class eType : uint8_t
 {
     DHT11     = 11,
-    SEN11301P = 11,
-    RHT01     = 11,
+    SEN11301P = 12,
+    RHT01     = 13,
     DHT22     = 22,
-    AM2302    = 22,
-    SEN51035P = 22,
-    RHT02     = 22,
-    RHT03     = 22
+    AM2302    = 23,
+    SEN51035P = 24,
+    RHT02     = 25,
+    RHT03     = 26
 };
 
-typedef enum eError eError;
-enum eError
+enum class eError : uint8_t
 {
     ERROR_NONE = 0,
     BUS_BUSY,
@@ -59,8 +57,7 @@ enum eError
     ERROR_NO_PATIENCE
 };
 
-typedef enum eScale eScale;
-enum eScale
+enum class eScale : uint8_t
 {
     CELCIUS = 0,
     FARENHEIT,

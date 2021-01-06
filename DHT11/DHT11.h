@@ -37,7 +37,7 @@ Ticker      newAction;
 
 
 //@brief Variables.
-volatile uint32_t myState;                                                      // State that indicates when to perform a new sample  
+volatile uint32_t myState;                                                      // State that indicates when to perform a new sample
 
 
 //@brief   FUNCTION PROTOTYPES
@@ -57,7 +57,7 @@ int main()
     wait(3);
     myled   =   0;
 
-    // DHT11 starts: Release the bus  
+    // DHT11 starts: Release the bus
     aux  =   myDHT11.DHT11_Init ();
 
 
@@ -72,10 +72,10 @@ int main()
         if ( myState == 1UL ) {
             myled = 1U;
 
-            // Get a new data 
+            // Get a new data
             aux  =   myDHT11.DHT11_GetData ( &myDHT11_Data );
 
-            // Check checksum to validate data  
+            // Check checksum to validate data
             if ( myDHT11_Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK ) {
                 myChecksum[0]  =   'O';
                 myChecksum[1]  =   'k';
@@ -84,11 +84,11 @@ int main()
                 myChecksum[1]  =   'r';
             }
 
-            // Send data through the UART    
+            // Send data through the UART
             pc.printf ( "T: %d C | RH: %d %% | Checksum: %s\r\n", myDHT11_Data.temperature, myDHT11_Data.humidity, myChecksum );
 
 
-            // Reset the variables   
+            // Reset the variables
             myState  =   0UL;
             myled    =   0U;
         }
@@ -129,7 +129,8 @@ public:
     * @brief   DEVICE DELAYS.
     *           NOTE: Values in microseconds.
     */
-    typedef enum {
+    typedef enum
+    {
         DHT11_START_SIGNAL              =   18000,         /*!<  Master: Start communication                    */
         DHT11_SAMPLE_DATA               =   40,            /*!<  Sample data time                               */
         DHT11_WAIT_FOR_SENSOR_RESPONSE  =   40             /*!<  Master: Wait for sensor response               */
@@ -140,7 +141,8 @@ public:
       * @brief   DEVICE BUS STATUS.
       *           NOTE: N/A.
       */
-    typedef enum {
+    typedef enum
+    {
         DHT11_PIN_HIGH    =   1U,                           /*!<  Pin high                                        */
         DHT11_PIN_LOW     =   0U,                           /*!<  Pin low                                         */
         DHT11_PIN_UNKNOWN =   2U                            /*!<  Pin unknown                                     */
@@ -151,7 +153,8 @@ public:
       * @brief   CHECKSUM STATUS.
       *           NOTE: N/A.
       */
-    typedef enum {
+    typedef enum
+    {
         DHT11_CHECKSUM_OK    =   0U,                       /*!<  Checksum correct                                */
         DHT11_CHECKSUM_ERROR =   1U                        /*!<  Checksum error                                  */
     } DHT11_checksum_status_t;
@@ -161,7 +164,8 @@ public:
       * @brief   TIMEOUT.
       *           NOTE: This value is just an estimation, the user must check it out.
       */
-    typedef enum {
+    typedef enum
+    {
         DHT11_TIMEOUT        =   0x23232                  /*!<  Timeout like a counter                          */
     } DHT11_timeout_t;
 
@@ -171,7 +175,8 @@ public:
     /**
       * @brief   ERROR STATUS. INTERNAL CONSTANTS
       */
-    typedef enum {
+    typedef enum
+    {
         DHT11_SUCCESS               =   0U,   /*!<  Communication success                           */
         DHT11_FAILURE               =   1U,   /*!<  Communication failure                           */
         DHT11_DATA_CORRUPTED        =   2U,   /*!<  Checksum error                                  */
@@ -184,7 +189,8 @@ public:
 
 #ifndef DHT11_VECTOR_STRUCT_H
 #define DHT11_VECTOR_STRUCT_H
-    typedef struct {
+    typedef struct
+    {
         /* Outputs  */
         uint8_t   temperature;                    /*!<  Temperature value             */
         uint8_t   humidity;                       /*!<  Relative humidity value       */

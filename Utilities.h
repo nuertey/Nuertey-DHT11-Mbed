@@ -291,6 +291,18 @@ namespace Utility
     struct TrueTypesEquivalent : std::is_same<typename std::decay<T>::type, U>::type
     {};
 
+    template <typename E>
+    constexpr auto ToUnderlyingType(E e) -> typename std::underlying_type<E>::type
+    {
+        return static_cast<typename std::underlying_type<E>::type>(e);
+    }
+
+    template <typename E, typename V = unsigned long>
+    constexpr auto ToEnum(V value) -> E
+    {
+        return static_cast<E>(value);
+    }
+
     // This custom clock type obtains the time from RTC too whilst noting the Processor speed.
     struct NucleoF767ZIClock_t
     {
