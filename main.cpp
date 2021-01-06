@@ -8,7 +8,51 @@
 *
 * @brief   Input: DHT11 temperature/humidity readings. Output: LCD 16x2. 
 * 
-* @note    
+* @note    Enumerated Peripheral Components Details
+* 
+*   1) The DHT11 sensor measures and provides humidity and temperature 
+*      values serially over a single wire. Its characteristics are as 
+*      follows:
+*      
+*      - It can measure relative humidity in percentages (20 to 90% RH) 
+*        and temperature in degree Celsius in the range of 0 to 50°C.
+* 
+*      - It has 4 pins; one of which is used for data communication in 
+*        serial form.
+* 
+*      - Pulses of different TON and TOFF are decoded as logic 1 or 
+*        logic 0 or start pulse or end of frame.
+* 
+*   2) LCDs (Liquid Crystal Displays) are used in embedded system 
+*      applications for displaying various parameters and statuses of 
+*      the system. The LCD 16x2 has the following characteristics:
+*  
+*      - It is a 16-pin device that has 2 rows that can accommodate 16 
+*        characters each. The pins and their corresponding functions are:
+* 
+*         [a] VSS  - Ground
+*         [b] VCC  - +5V
+*         [c] VEE  - Contrast Control
+*         [d] RS   - Register Select
+*         [e] RW   - Read/Write
+*         [f] E    - Enable
+*         [g] D0   - Data Pin 0
+*         [h] D1   - Data Pin 1
+*         [i] D2   - Data Pin 2
+*         [j] D3   - Data Pin 3
+*         [k] D4   - Data Pin 4
+*         [l] D5   - Data Pin 5
+*         [m] D6   - Data Pin 6
+*         [n] D7   - Data Pin 7
+*         [o] LED+ - LED+ 5V
+*         [p] LED- - LED- Ground
+* 
+*      - It can be used either in 4-bit mode or an 8-bit mode.
+* 
+*      - For displaying on it, custom characters can be created.
+* 
+*      - And lastly, the LCD 16x2 has 8 data lines and 3 control lines 
+*        that can be used for control purposes.
 *
 * @warning
 *
@@ -37,19 +81,57 @@ static const float    DHT11_DEVICE_STATE_CHANGE_RATE(1.0);      // 1 second.
 static const uint32_t DHT11_DEVICE_WAITING(0UL);
 static const uint32_t DHT11_DEVICE_READING(1UL);
 
-// TBD Nuertey Odzeyem; check all pin definitions to make sure that they actually match your physical mock-up.
+// DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line
+// serial. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
+// are designated by [CN7, CN8, CN9, CN10].
+//
+// Connector: CN7 
+// Pin      : 13 
+// Pin Name : D22
+// STM32 Pin: PB5
+// Signal   : SPI_B_MOSI
+DHT11             g_DHT11(PB5);
 
-// DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line serial.
+// LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit
+// interface. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
+// are designated by [CN7, CN8, CN9, CN10].
 //
 // Connector: CN7 
 // Pin      : 14 
 // Pin Name : D11
 // STM32 Pin: PA7
-// Function : SPI1_MOSI
-DHT11             g_DHT11(PA7);
-
-// LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit interface.
-LCD               g_LCD16x2(p5, p6, p7, p8, p9, p10); // RS, RW, D4, D5, D6, D7
+// Signal   : SPI_A_MOSI
+//
+// Connector: CN7 
+// Pin      : 12 
+// Pin Name : D12
+// STM32 Pin: PA6
+// Signal   : SPI_A_MISO
+//
+// Connector: CN7 
+// Pin      : 10 
+// Pin Name : D13
+// STM32 Pin: PA5
+// Signal   : SPI_A_SCK
+//
+// Connector: CN8 
+// Pin      : 14 
+// Pin Name : D49
+// STM32 Pin: PG2
+// Signal   : I/O
+//
+// Connector: CN8 
+// Pin      : 16 
+// Pin Name : D50
+// STM32 Pin: PG3
+// Signal   : I/O
+//
+// Connector: CN9 
+// Pin      : 29 
+// Pin Name : D65
+// STM32 Pin: PG0
+// Signal   : I/O
+LCD               g_LCD16x2(PA7, PA6, PA5, PG2, PG3, PG0); // RS, RW, D4, D5, D6, D7
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
