@@ -90,7 +90,7 @@ static const uint32_t DHT11_DEVICE_READING(1UL);
 // Pin Name : D22
 // STM32 Pin: PB5
 // Signal   : SPI_B_MOSI
-DHT11             g_DHT11(PB5);
+DHT11             g_DHT11(PB_5);
 
 // LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit
 // interface. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
@@ -131,7 +131,7 @@ DHT11             g_DHT11(PB5);
 // Pin Name : D65
 // STM32 Pin: PG0
 // Signal   : I/O
-LCD               g_LCD16x2(PA7, PA6, PA5, PG2, PG3, PG0); // RS, RW, D4, D5, D6, D7
+LCD               g_LCD16x2(PA_7, PA_6, PA_5, PG_2, PG_3, PG_0); // RS, RW, D4, D5, D6, D7
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
@@ -156,10 +156,10 @@ inline static auto make_dht11_error_codes_map()
 {
     DHT11StatusCodesMap_t eMap;
     
-    eMap.insert(IndexElementDHT11_t(DHT11_SUCCESS, std::string("\"Communication success\"")));
-    eMap.insert(IndexElementDHT11_t(DHT11_FAILURE, std::string("\"Communication failure\"")));
-    eMap.insert(IndexElementDHT11_t(DHT11_DATA_CORRUPTED, std::string("\"Checksum error\"")));
-    eMap.insert(IndexElementDHT11_t(DHT11_BUS_TIMEOUT, std::string("\"Bus response timeout/error\"")));
+    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_SUCCESS, std::string("\"Communication success\"")));
+    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_FAILURE, std::string("\"Communication failure\"")));
+    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_DATA_CORRUPTED, std::string("\"Checksum error\"")));
+    eMap.insert(IndexElementDHT11_t(DHT11::DHT11_BUS_TIMEOUT, std::string("\"Bus response timeout/error\"")));
  
     return eMap;
 }
@@ -192,7 +192,7 @@ void DHT11SensorAcquisition()
     // DHT11 processing begins. Therefore first release the single-wire 
     // bidirectional bus:
     result = g_DHT11.DHT11_Init();
-    if (result != DHT11_SUCCESS)
+    if (result != DHT11::DHT11_SUCCESS)
     {
         Utility::g_STDIOMutex.lock();
         printf("Error! g_DHT11.DHT11_Init() returned: [%d] -> %s\n", 
@@ -231,8 +231,12 @@ void DHT11SensorAcquisition()
 
             result = g_DHT11.DHT11_GetData(&theDHT11Data);
 
-            if (result != DHT11_SUCCESS)
+            if (result != DHT11::DHT11_SUCCESS)
             {
+                g_LCD16x2.clr();
+                g_LCD16x2.setCursor(0, 0);
+                g_LCD16x2.wtrString("Error!");
+
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.DHT11_GetData() returned: [%d] -> %s\n", 
                       result, ToString(result).c_str());
@@ -252,7 +256,7 @@ void DHT11SensorAcquisition()
                 g_LCD16x2.wtrString(" % RH");
 
                 // Depend on checksum in trusting data read from DHT11 device.
-                std::string((theDHT11Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK) ? "PASSED" : "FAILED") checksum;
+                std::string checksum = std::string((theDHT11Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK) ? "PASSED" : "FAILED");
 
                 Utility::g_STDIOMutex.lock();
                 printf("Temperature: %d\tHumidity : %d%% RH\tChecksum: %s\r\n", theDHT11Data.temperature, theDHT11Data.humidity, checksum.c_str());
