@@ -69,7 +69,7 @@ class DHT
 public:
     DHT(PinName pin, eType DHTtype);
     ~DHT();
-    eError readData(void);
+    [[nodiscard]] eError readData(void);
     float ReadHumidity(void);
     float ReadTemperature(eScale const Scale);
     float CalcdewPoint(float const celsius, float const humidity);
