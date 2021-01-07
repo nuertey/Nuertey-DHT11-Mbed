@@ -72,6 +72,7 @@
 #include "DHT.h"
 #include "LCD_H.h"
 #include "Utilities.h"
+#include "waveforms.h"
 
 #define LED_ON  1
 #define LED_OFF 0
@@ -149,10 +150,14 @@ DigitalOut        g_LEDRed(LED3);
 DigitalOut        g_External10mmLEDGreen(PA_5);
 DigitalOut        g_External10mmLEDBlue(PA_5);
 DigitalOut        g_External10mmLEDRed(PA_5);
+//PwmOut            g_External10mmLEDBlue(PA_5);
+//PwmOut            g_External10mmLEDRed(PA_5);
 
 Thread            g_External10mmLEDThread1;
-Thread            g_External10mmLEDThread2;
-Thread            g_External10mmLEDThread3;
+//Thread            g_External10mmLEDThread2;
+//Thread            g_External10mmLEDThread3;
+Thread            g_External10mmLEDThread4;
+Thread            g_External10mmLEDThread5;
 
 // ==========================================================
 // Free-Floating General Helper Functions To Be Used By All :
@@ -288,6 +293,28 @@ void LEDBlinker(ExternalLED_t * pExternalLED)
     }
 }
 
+void LEDTriangularWave(PwmOut * pExternalLEDPin)
+{
+    auto result = std::max_element(g_TriangleWaveform, g_TriangleWaveform + NUMBER_OF_TRIANGULAR_SAMPLES);
+    for (auto & dutyCycle : g_TriangleWaveform) 
+    {
+        float scaledDutyCycle = (dutyCycle/(*result));
+
+        *pExternalLEDPin = scaledDutyCycle;
+    }
+}
+
+void LEDSinusoidalWave(PwmOut * pExternalLEDPin)
+{
+    auto result = std::max_element(g_SineWaveform, g_SineWaveform + NUMBER_OF_SINUSOID_SAMPLES);
+    for (auto & dutyCycle : g_SineWaveform) 
+    {
+        float scaledDutyCycle = (dutyCycle/(*result));
+
+        *pExternalLEDPin = scaledDutyCycle;
+    }
+}
+
 // Do not return from main() as in  Embedded Systems, there is nothing
 // (conceptually) to return to. A crash will occur otherwise!
 int main()
@@ -314,8 +341,15 @@ int main()
     ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
     g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
-    g_External10mmLEDThread2.start(callback(LEDBlinker, &external10mmLEDBlue));
-    g_External10mmLEDThread3.start(callback(LEDBlinker, &external10mmLEDRed));
+    //g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_External10mmLEDBlue));
+    //g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_External10mmLEDRed));
+
+    // Forget not proper thread joins:
+    //g_External10mmLEDThread2.join();
+    //g_External10mmLEDThread3.join();
+
+    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDBlue));
+    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
 
     Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
                                        CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
@@ -345,8 +379,8 @@ int main()
 
     // Forget not proper thread joins:
     g_External10mmLEDThread1.join();
-    g_External10mmLEDThread2.join();
-    g_External10mmLEDThread3.join();
+    g_External10mmLEDThread4.join();
+    g_External10mmLEDThread5.join();
 
     Utility::ReleaseGlobalResources();
 
