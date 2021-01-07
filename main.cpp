@@ -146,9 +146,9 @@ DigitalOut        g_LEDRed(LED3);
 
 // TBD Nuertey Odzeyem; document 10mm LED ratings: Forward voltage? Forward operating current?
 // TBD Nuertey Odzeyem; document 10mm LED connections to NUCLEO-F767ZI output pins.
-DigitalOut        g_External10mmLEDGreen(PG_x);
-DigitalOut        g_External10mmLEDBlue(PG_x);
-DigitalOut        g_External10mmLEDRed(PG_x);
+DigitalOut        g_External10mmLEDGreen(PA_5);
+DigitalOut        g_External10mmLEDBlue(PA_5);
+DigitalOut        g_External10mmLEDRed(PA_5);
 
 Thread            g_External10mmLEDThread1;
 Thread            g_External10mmLEDThread2;
@@ -186,6 +186,31 @@ inline std::string ToString(const eError & key)
 // ==============================
 // Begin Actual Implementations :
 // ==============================
+struct ExternalLED_t 
+{
+    ExternalLED_t(DigitalOut * pExternalLEDPin, const uint32_t& timeOn, const uint32_t& timeOff)
+        : m_pExternalLEDPin(pExternalLEDPin) // CAUTION! Ensure that the scope of pExternalLEDPin outlasts us.
+        , m_TimeOn(timeOn)
+        , m_TimeOff(timeOff)
+    {
+    }
+    ExternalLED_t(const ExternalLED_t& otherLED)
+    {
+        // CAUTION! Ensure that the scope of the external LED pin pointer
+        // outlasts the thread which uses this type; and it DOES, since it
+        // is really declared as global. Eschew std::move() then and simply
+        // re-point our pointer to that global variable address.
+        //m_pExternalLEDPin = std::move(otherLED.m_pExternalLEDPin);
+        m_pExternalLEDPin = otherLED.m_pExternalLEDPin;
+        m_TimeOn = otherLED.m_TimeOn;
+        m_TimeOff = otherLED.m_TimeOff;
+    }
+
+    DigitalOut *   m_pExternalLEDPin;
+    uint32_t       m_TimeOn;
+    uint32_t       m_TimeOff;
+};
+
 void DHT11SensorAcquisition()
 {
     eError result;
@@ -244,7 +269,7 @@ void DHT11SensorAcquisition()
 
             Utility::g_STDIOMutex.lock();
             printf("Error! g_DHT11.readData() returned: [%d] -> %s\n", 
-                      result, ToString(result).c_str());
+                      Utility::ToUnderlyingType(result), ToString(result).c_str());
             Utility::g_STDIOMutex.unlock();
         }
 
@@ -252,14 +277,14 @@ void DHT11SensorAcquisition()
     }
 }
 
-void LEDBlinker(DigitalOut *externalLEDPin, uint32_t timeOn, uint32_t timeOff)
+void LEDBlinker(ExternalLED_t * pExternalLED)
 {
     while (true) 
     {
-        *externalLEDPin = LED_ON;
-        ThisThread::sleep_for(timeOn);
-        *externalLEDPin = LED_OFF;
-        ThisThread::sleep_for(timeOff);
+        *(pExternalLED->m_pExternalLEDPin) = LED_ON;
+        ThisThread::sleep_for(pExternalLED->m_TimeOn);
+        *(pExternalLED->m_pExternalLEDPin) = LED_OFF;
+        ThisThread::sleep_for(pExternalLED->m_TimeOff);
     }
 }
 
@@ -281,9 +306,16 @@ int main()
     // in series with an appropriate resistor (60 - 100 ohms?) as the 
     // I/Os of STM32 NUCLEO-F767ZI are only 3.3 V compatible ... whereas 
     // the LEDs are high-powered (5V)? Forward voltage? Forward operating current?
-    g_External10mmLEDThread1.start(callback(LEDBlinker, &g_External10mmLEDGreen, 100, 100));
-    g_External10mmLEDThread2.start(callback(LEDBlinker, &g_External10mmLEDBlue, 200, 100));
-    g_External10mmLEDThread3.start(callback(LEDBlinker, &g_External10mmLEDRed, 500, 200));
+
+    // It seems that Mbed Callback class can only take in one argument.
+    // Not to worry, we will improvise with an aggregate class type.
+    ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
+    ExternalLED_t external10mmLEDBlue(&g_External10mmLEDBlue, 200, 100);
+    ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
+
+    g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
+    g_External10mmLEDThread2.start(callback(LEDBlinker, &external10mmLEDBlue));
+    g_External10mmLEDThread3.start(callback(LEDBlinker, &external10mmLEDRed));
 
     Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
                                        CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
