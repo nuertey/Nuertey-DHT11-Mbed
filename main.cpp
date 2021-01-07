@@ -145,11 +145,40 @@ DigitalOut        g_LEDGreen(LED1);
 DigitalOut        g_LEDBlue(LED2);
 DigitalOut        g_LEDRed(LED3);
 
-// TBD Nuertey Odzeyem; document 10mm LED ratings: Forward voltage? Forward operating current?
-// TBD Nuertey Odzeyem; document 10mm LED connections to NUCLEO-F767ZI output pins.
-DigitalOut        g_External10mmLEDGreen(PA_5);
-DigitalOut        g_External10mmLEDYellow(PA_5);
-DigitalOut        g_External10mmLEDRed(PA_5);
+// =======================================================================
+// 10mm LED connections to NUCLEO-F767ZI output pins are documented below:
+// =======================================================================
+
+// Connector: CN10
+// Pin      : 12 
+// Pin Name : D2
+// STM32 Pin: PF15 ***
+// Signal   : I/O
+DigitalOut        g_External10mmLEDGreen(PF_15); // LED Current = 18mA; Voltage Drop = 2.1V; Calculated Resistance = 66.67Ω
+
+// *** CAUTION!!!
+// PA7 is used as D11 and connected to CN7 pin 14 by default. If JP6 is ON,
+// it is also connected to both Ethernet PHY as RMII_DV and CN9 pin 15. 
+// In this case only one function of the Ethernet or D11 must be used.
+//
+// So choose some other pin here other than CN9, pin 15 (PA7).
+
+
+// Connector: CN9 
+// Pin      : 30 
+// Pin Name : D64
+// STM32 Pin: PG1
+// Signal   : I/O
+DigitalOut        g_External10mmLEDYellow(PG_1);// LED Current = 18mA; Voltage Drop = 2.1V; Calculated Resistance = 66.67Ω
+
+// Connector: CN10 
+// Pin      : 28 
+// Pin Name : D38
+// STM32 Pin: PE14
+// Signal   : I/O
+DigitalOut        g_External10mmLEDRed(PE_14);   // LED Current = 18mA; Voltage Drop = 2.0V; Calculated Resistance = 72.22Ω
+
+// TBD Nuertey Odzeyem; select, connect and document PWM pins.
 //PwmOut            g_External10mmLEDYellow(PA_5);
 //PwmOut            g_External10mmLEDRed(PA_5);
 
