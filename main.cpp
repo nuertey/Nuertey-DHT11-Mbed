@@ -148,9 +148,9 @@ DigitalOut        g_LEDRed(LED3);
 // TBD Nuertey Odzeyem; document 10mm LED ratings: Forward voltage? Forward operating current?
 // TBD Nuertey Odzeyem; document 10mm LED connections to NUCLEO-F767ZI output pins.
 DigitalOut        g_External10mmLEDGreen(PA_5);
-DigitalOut        g_External10mmLEDBlue(PA_5);
+DigitalOut        g_External10mmLEDYellow(PA_5);
 DigitalOut        g_External10mmLEDRed(PA_5);
-//PwmOut            g_External10mmLEDBlue(PA_5);
+//PwmOut            g_External10mmLEDYellow(PA_5);
 //PwmOut            g_External10mmLEDRed(PA_5);
 
 Thread            g_External10mmLEDThread1;
@@ -337,18 +337,18 @@ int main()
     // It seems that Mbed Callback class can only take in one argument.
     // Not to worry, we will improvise with an aggregate class type.
     ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
-    ExternalLED_t external10mmLEDBlue(&g_External10mmLEDBlue, 200, 100);
+    ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
     ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
     g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
-    //g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_External10mmLEDBlue));
+    //g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_External10mmLEDYellow));
     //g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_External10mmLEDRed));
 
     // Forget not proper thread joins:
     //g_External10mmLEDThread2.join();
     //g_External10mmLEDThread3.join();
 
-    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDBlue));
+    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
     g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
 
     Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
