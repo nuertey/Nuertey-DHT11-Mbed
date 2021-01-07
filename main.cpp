@@ -5,10 +5,13 @@
 *    connected to a DHT11 Temperature and Humidity sensor and values 
 *    output to an LCD 16x2 display, all mocked-up via a breadboard. This
 *    allows us to periodically obtain temperature and humidity readings.
+* 
+*    Furthermore, the application continuously blinks 3 10mm external LEDs
+*    connected to various I/O ports at different frequencies.
 *
 * @brief   Input: DHT11 temperature/humidity readings. Output: LCD 16x2. 
 * 
-* @note    Enumerated Peripheral Components Details
+* @note    Enumerated Peripheral Components Details Are As Follows:
 * 
 *   1) The DHT11 sensor measures and provides humidity and temperature 
 *      values serially over a single wire. Its characteristics are as 
@@ -47,7 +50,7 @@
 *         [o] LED+ - LED+ 5V
 *         [p] LED- - LED- Ground
 * 
-*      - It can be used either in 4-bit mode or an 8-bit mode.
+*      - It can be used either in a 4-bit mode or an 8-bit mode.
 * 
 *      - For displaying on it, custom characters can be created.
 * 
@@ -56,6 +59,8 @@
 *
 * @warning   The I/Os of STM32 NUCLEO-F767ZI are 3.3 V compatible 
 *            instead of 5 V for say, the Arduino Uno V3 microcontroller.
+*            Hence values for current-limiting resistors placed in series
+*            with the external 10mm LEDs must be adjusted accordingly.
 *
 * @author    Nuertey Odzeyem
 * 
@@ -65,7 +70,6 @@
 ***********************************************************************/
 #include "mbed.h"
 #include "DHT.h"
-#include "DHT11.h"
 #include "LCD_H.h"
 #include "Utilities.h"
 
@@ -80,8 +84,8 @@ static const float    DHT11_DEVICE_STATE_CHANGE_RATE(2.0);      // 2 millisecond
 // with the MCU observing these states:
 //
 // WAITING, READING.
-//static const uint32_t DHT11_DEVICE_WAITING(0UL);
-//static const uint32_t DHT11_DEVICE_READING(1UL);
+static const uint32_t DHT11_DEVICE_WAITING(0UL);
+static const uint32_t DHT11_DEVICE_READING(1UL);
 
 // DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line
 // serial. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
@@ -92,7 +96,6 @@ static const float    DHT11_DEVICE_STATE_CHANGE_RATE(2.0);      // 2 millisecond
 // Pin Name : D22
 // STM32 Pin: PB5
 // Signal   : SPI_B_MOSI
-//DHT11             g_DHT11(PB_5);
 DHT               g_DHT11(PB_5, eType::DHT11);
 
 // LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit
@@ -141,7 +144,8 @@ DigitalOut        g_LEDGreen(LED1);
 DigitalOut        g_LEDBlue(LED2);
 DigitalOut        g_LEDRed(LED3);
 
-// Document ratings: Forward voltage? Forward operating current?
+// TBD Nuertey Odzeyem; document 10mm LED ratings: Forward voltage? Forward operating current?
+// TBD Nuertey Odzeyem; document 10mm LED connections to NUCLEO-F767ZI output pins.
 DigitalOut        g_External10mmLEDGreen(PG_x);
 DigitalOut        g_External10mmLEDBlue(PG_x);
 DigitalOut        g_External10mmLEDRed(PG_x);
@@ -149,14 +153,6 @@ DigitalOut        g_External10mmLEDRed(PG_x);
 Thread            g_External10mmLEDThread1;
 Thread            g_External10mmLEDThread2;
 Thread            g_External10mmLEDThread3;
-
-// Use the Ticker interface to set up a recurring interrupt. It calls a
-// function repeatedly and at a specified rate. As we don't need 
-// microseconds precision anyway, leverage LowPowerTicker instead. 
-// Crucially, that would ensure that we do not block deep sleep mode.
-//LowPowerTicker    g_PeriodicStateChanger;
-
-//volatile uint32_t g_DeviceState;     // Indicates when to read in a new sample.
 
 // ==========================================================
 // Free-Floating General Helper Functions To Be Used By All :
@@ -190,17 +186,10 @@ inline std::string ToString(const eError & key)
 // ==============================
 // Begin Actual Implementations :
 // ==============================
-//void AlertToRead()
-//{
-//    g_DeviceState = DHT11_DEVICE_READING;
-//}
-
 void DHT11SensorAcquisition()
 {
-    eError error;
+    eError result;
     float h = 0.0f, c = 0.0f, f = 0.0f, k = 0.0f, dp = 0.0f, dpf = 0.0f;
-//    DHT11::DHT11_status_t result;
-//    DHT11::DHT11_data_t   theDHT11Data;
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
@@ -215,24 +204,6 @@ void DHT11SensorAcquisition()
 
     g_LEDGreen = LED_OFF;
 
-    // DHT11 processing begins. Therefore first release the single-wire 
-    // bidirectional bus:
-//    result = g_DHT11.DHT11_Init();
-//    if (result != DHT11::DHT11_SUCCESS)
-//    {
-//        Utility::g_STDIOMutex.lock();
-//        printf("Error! g_DHT11.DHT11_Init() returned: [%d] -> %s\n", 
-//              result, ToString(result).c_str());
-//        Utility::g_STDIOMutex.unlock();
-//
-//        return;
-//    }
-//
-//    g_DeviceState = DHT11_DEVICE_WAITING;
-//    g_LCD16x2.init();
-
-    // Interrupt us every second to wake us up:
-//    g_PeriodicStateChanger.attach(&AlertToRead, DHT11_DEVICE_STATE_CHANGE_RATE);
     while (1)
     {
         ThisThread::sleep_for(DHT11_DEVICE_STATE_CHANGE_RATE);
@@ -240,8 +211,8 @@ void DHT11SensorAcquisition()
         // Indicate that we are reading from DHT11 with blue LED.
         g_LEDBlue = LED_ON;
 
-        error = g_DHT11.readData();
-        if (eError::ERROR_NONE == error)
+        result = g_DHT11.readData();
+        if (eError::ERROR_NONE == result)
         {
             c   = g_DHT11.ReadTemperature(eScale::CELCIUS);
             f   = g_DHT11.ReadTemperature(eScale::FARENHEIT);
@@ -273,73 +244,12 @@ void DHT11SensorAcquisition()
 
             Utility::g_STDIOMutex.lock();
             printf("Error! g_DHT11.readData() returned: [%d] -> %s\n", 
-                      error, ToString(error).c_str());
+                      result, ToString(result).c_str());
             Utility::g_STDIOMutex.unlock();
         }
 
         g_LEDBlue = LED_OFF;
     }
-/*
-    while (1)
-    {
-        // Power Management (sleep)
-        //
-        // Sleep mode
-        //
-        // The system clock to the core stops until a reset or an interrupt 
-        // occurs. This eliminates dynamic power that the processor, 
-        // memory systems and buses use. This mode maintains the processor,
-        // peripheral and memory state, and the peripherals continue to work
-        // and can generate interrupts.
-        //
-        // You can wake up the processor by any internal peripheral interrupt
-        // or external pin interrupt.
-        sleep();
-
-        if (g_DeviceState == DHT11_DEVICE_READING)
-        {
-            // Indicate that we are reading from DHT11 with blue LED.
-            g_LEDBlue = LED_ON;
-
-            result = g_DHT11.DHT11_GetData(&theDHT11Data);
-
-            if (result != DHT11::DHT11_SUCCESS)
-            {
-                g_LCD16x2.clr();
-                g_LCD16x2.setCursor(0, 0);
-                g_LCD16x2.wtrString("Error!");
-
-                Utility::g_STDIOMutex.lock();
-                printf("Error! g_DHT11.DHT11_GetData() returned: [%d] -> %s\n", 
-                      result, ToString(result).c_str());
-                Utility::g_STDIOMutex.unlock();
-            }
-            else
-            {
-                g_LCD16x2.clr();
-
-                g_LCD16x2.setCursor(0, 0);
-                g_LCD16x2.wtrString("Temp: ");
-                g_LCD16x2.wtrNumber(static_cast<float>(theDHT11Data.temperature));
-                g_LCD16x2.wtrString(" C");
-                g_LCD16x2.setCursor(1, 0);
-                g_LCD16x2.wtrString("Humi: ");
-                g_LCD16x2.wtrNumber(static_cast<float>(theDHT11Data.humidity));
-                g_LCD16x2.wtrString(" % RH");
-
-                // Depend on checksum in trusting data read from DHT11 device.
-                std::string checksum = std::string((theDHT11Data.checksumStatus == DHT11::DHT11_CHECKSUM_OK) ? "PASSED" : "FAILED");
-
-                Utility::g_STDIOMutex.lock();
-                printf("Temperature: %d\tHumidity : %d%% RH\tChecksum: %s\r\n", theDHT11Data.temperature, theDHT11Data.humidity, checksum.c_str());
-                Utility::g_STDIOMutex.unlock();
-            }
-
-            g_LEDBlue = LED_OFF;
-            g_DeviceState = DHT11_DEVICE_WAITING;
-        }
-    }
-*/
 }
 
 void LEDBlinker(DigitalOut *externalLEDPin, uint32_t timeOn, uint32_t timeOff)

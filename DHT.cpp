@@ -70,6 +70,8 @@ eError DHT::readData()
 
     DigitalInOut DHT_io(_pin);
 
+    // DHT11 processing begins. Therefore first release the single-wire 
+    // bidirectional bus:
     // IO must be in hi state to start
     if (eError::ERROR_NONE != stall(DHT_io, 0, 250))
     {
