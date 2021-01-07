@@ -54,7 +54,8 @@
 *      - And lastly, the LCD 16x2 has 8 data lines and 3 control lines 
 *        that can be used for control purposes.
 *
-* @warning
+* @warning   The I/Os of STM32 NUCLEO-F767ZI are 3.3 V compatible 
+*            instead of 5 V for say, the Arduino Uno V3 microcontroller.
 *
 * @author    Nuertey Odzeyem
 * 
@@ -140,6 +141,15 @@ DigitalOut        g_LEDGreen(LED1);
 DigitalOut        g_LEDBlue(LED2);
 DigitalOut        g_LEDRed(LED3);
 
+// Document ratings: Forward voltage? Forward operating current?
+DigitalOut        g_External10mmLEDGreen(PG_x);
+DigitalOut        g_External10mmLEDBlue(PG_x);
+DigitalOut        g_External10mmLEDRed(PG_x);
+
+Thread            g_External10mmLEDThread1;
+Thread            g_External10mmLEDThread2;
+Thread            g_External10mmLEDThread3;
+
 // Use the Ticker interface to set up a recurring interrupt. It calls a
 // function repeatedly and at a specified rate. As we don't need 
 // microseconds precision anyway, leverage LowPowerTicker instead. 
@@ -194,7 +204,15 @@ void DHT11SensorAcquisition()
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
+
+    g_LCD16x2.clr();
+    g_LCD16x2.setCursor(0, 0);
+    g_LCD16x2.wtrString("NUERTEY ODZEYEM");
+    g_LCD16x2.setCursor(1, 0);
+    g_LCD16x2.wtrString("DHT11 with NUCLEO-F767ZI");
+
     ThisThread::sleep_for(DHT11_DEVICE_USER_OBSERVABILITY_DELAY);
+
     g_LEDGreen = LED_OFF;
 
     // DHT11 processing begins. Therefore first release the single-wire 
@@ -233,7 +251,6 @@ void DHT11SensorAcquisition()
             dpf = g_DHT11.CalcdewPointFast(c, h);
 
             g_LCD16x2.clr();
-
             g_LCD16x2.setCursor(0, 0);
             g_LCD16x2.wtrString("Temp: ");
             g_LCD16x2.wtrNumber(c);
@@ -325,6 +342,17 @@ void DHT11SensorAcquisition()
 */
 }
 
+void LEDBlinker(DigitalOut *externalLEDPin, uint32_t timeOn, uint32_t timeOff)
+{
+    while (true) 
+    {
+        *externalLEDPin = LED_ON;
+        ThisThread::sleep_for(timeOn);
+        *externalLEDPin = LED_OFF;
+        ThisThread::sleep_for(timeOff);
+    }
+}
+
 // Do not return from main() as in  Embedded Systems, there is nothing
 // (conceptually) to return to. A crash will occur otherwise!
 int main()
@@ -337,7 +365,16 @@ int main()
     printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
     printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
     printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
-    
+
+    // Spawns three threads so as to blink the three large (10mm) externally
+    // connected LEDs at various frequencies. Note to connect said LEDs
+    // in series with an appropriate resistor (60 - 100 ohms?) as the 
+    // I/Os of STM32 NUCLEO-F767ZI are only 3.3 V compatible ... whereas 
+    // the LEDs are high-powered (5V)? Forward voltage? Forward operating current?
+    g_External10mmLEDThread1.start(callback(LEDBlinker, &g_External10mmLEDGreen, 100, 100));
+    g_External10mmLEDThread2.start(callback(LEDBlinker, &g_External10mmLEDBlue, 200, 100));
+    g_External10mmLEDThread3.start(callback(LEDBlinker, &g_External10mmLEDRed, 500, 200));
+
     Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
                                        CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
                                        DHT11SensorAcquisition);
@@ -363,6 +400,11 @@ int main()
     // As we are done dispatching, reset the event id so that potential
     // callbacks do not attempt to perform actions on the Master Event Queue.
     Utility::gs_CloudCommunicationsEventIdentifier = 0;
+
+    // Forget not proper thread joins:
+    g_External10mmLEDThread1.join();
+    g_External10mmLEDThread2.join();
+    g_External10mmLEDThread3.join();
 
     Utility::ReleaseGlobalResources();
 
