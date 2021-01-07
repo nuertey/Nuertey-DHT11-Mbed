@@ -299,8 +299,8 @@ void LEDTriangularWave(PwmOut * pExternalLEDPin)
     for (auto & dutyCycle : g_TriangleWaveform) 
     {
         float scaledDutyCycle = (dutyCycle/(*result));
-
         *pExternalLEDPin = scaledDutyCycle;
+        ThisThread::sleep_for(200);
     }
 }
 
@@ -310,8 +310,8 @@ void LEDSinusoidalWave(PwmOut * pExternalLEDPin)
     for (auto & dutyCycle : g_SineWaveform) 
     {
         float scaledDutyCycle = (dutyCycle/(*result));
-
         *pExternalLEDPin = scaledDutyCycle;
+        ThisThread::sleep_for(200);
     }
 }
 
