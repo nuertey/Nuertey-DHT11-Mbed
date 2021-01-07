@@ -1,5 +1,4 @@
 #include "mbed.h"
-
 #include "LCD_H.h"
 
 /*
@@ -88,7 +87,6 @@ void LCD::wtrChar(char a)
 
 void LCD::clr()
 {
-
     ctrl=0;
     en=0;
 
@@ -153,12 +151,13 @@ void LCD::ftoa(float n, char *res,int afterpoint)
     int ipart=(int)n;
     float fpart=n-(float)ipart;
     int i=intToStr(ipart,res,0);
-    if(afterpoint!=0)
+
+    if (afterpoint!=0)
     {
         res[i]='.';
         // Get the value of fraction part upto given no.
-// of points after dot. The third parameter is needed
-// to handle cases like 233.007
+        // of points after dot. The third parameter is needed
+        // to handle cases like 233.007
         fpart= fpart*(pow((double)10,(double)afterpoint));
         intToStr((int)fpart,res+i+1,afterpoint);
     }
@@ -180,26 +179,31 @@ void LCD::setCursor(uint8_t row, uint8_t column)
     en=0;
     // Ubicar Cursor, posiciones en hexadecimal
 
-    switch(row)
+    switch (row)
     {
-    case 0:
-        data=0b1000;
-        tglEn();
-        wait_ms(200);
-        break;
-    case 1:
-        data=0b1100;
-        tglEn();
-        wait_ms(200);
-        break;
-    default:
-        data=0b1000;
-        tglEn();
-        wait_ms(200);
-        break;
+        case 0:
+        {
+            data=0b1000;
+            tglEn();
+            wait_ms(200);
+            break;
+        }
+        case 1:
+        {
+            data=0b1100;
+            tglEn();
+            wait_ms(200);
+            break;
+        }
+        default:
+        {
+            data=0b1000;
+            tglEn();
+            wait_ms(200);
+            break;
+        }
     }
     data=column;
     tglEn();
     wait_ms(200);
-
 }
