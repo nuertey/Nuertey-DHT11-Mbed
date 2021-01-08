@@ -8,8 +8,15 @@
 * 
 *    Furthermore, the application continuously blinks 3 10mm external LEDs
 *    connected to various I/O ports at different frequencies.
+* 
+*    And lastly, the application employs PWM output pins on the 
+*    NUCLEO-F767ZI to dim the 10mm LEDs according to precomputed 
+*    triangular and sinusoidal waveform function values. Essentially,  
+*    the values of said waveforms are scaled and used as the duty cycle
+*    in driving, dimming, and brightening the 10mm LEDs.
 *
-* @brief   Input: DHT11 temperature/humidity readings. Output: LCD 16x2. 
+* @brief   Input: DHT11 temperature/humidity readings. Output: LCD 16x2.
+*          Output: various cool LED patterns. 
 * 
 * @note    Enumerated Peripheral Components Details Are As Follows:
 * 
@@ -163,7 +170,6 @@ DigitalOut        g_External10mmLEDGreen(PF_15); // LED Current = 18mA; Voltage 
 //
 // So choose some other pin here other than CN9, pin 15 (PA7).
 
-
 // Connector: CN9 
 // Pin      : 30 
 // Pin Name : D64
@@ -188,9 +194,9 @@ Thread            g_External10mmLEDThread1;
 Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
 
-// ==========================================================
-// Free-Floating General Helper Functions To Be Used By All :
-// ==========================================================
+// =========================================================
+// Free-Floating General Helper Functions To Be Used By All:
+// =========================================================
 using DHT11StatusCodesMap_t = std::map<eError, std::string>;
 using IndexElementDHT11_t   = DHT11StatusCodesMap_t::value_type;
 
@@ -217,9 +223,9 @@ inline std::string ToString(const eError & key)
     return (gs_DHT11StatusCodesMap.at(key));
 }
 
-// ==============================
-// Begin Actual Implementations :
-// ==============================
+// =============================
+// Begin Actual Implementations:
+// =============================
 struct ExternalLED_t 
 {
     ExternalLED_t(DigitalOut * pExternalLEDPin, const uint32_t& timeOn, const uint32_t& timeOff)
