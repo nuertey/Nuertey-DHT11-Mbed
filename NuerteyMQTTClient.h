@@ -51,9 +51,9 @@
 #include "MQTTmbed.h"
 #include "MQTTClient.h"
 #include "MQTTNetwork.h"
-#include "nanopb/source/protobuf/pb_common.h"
-#include "nanopb/source/protobuf/pb_encode.h"
-#include "nanopb/source/protobuf/pb_decode.h"
+//#include "nanopb/source/protobuf/pb_common.h"
+//#include "nanopb/source/protobuf/pb_encode.h"
+//#include "nanopb/source/protobuf/pb_decode.h"
 
 #define MQTTCLIENT_QOS1 1
 

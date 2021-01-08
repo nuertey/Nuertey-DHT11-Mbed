@@ -464,6 +464,8 @@ namespace Utility
                         printf("\r\nError! On DNS lookup, Network returned: [%d] -> %s", retVal, ToString(retVal).c_str());
                     }
                 }  while (retVal < 0);
+
+                g_EthernetInterface.get_ip_address(&serverSocketAddress);
                 ipAddress = std::string(serverSocketAddress.get_ip_address());
             }
         }
@@ -489,9 +491,17 @@ namespace Utility
 
     const auto ComposeSystemStatistics = []()
     {
-        const char * ip = g_EthernetInterface.get_ip_address();
-        const char * netmask = g_EthernetInterface.get_netmask();
-        const char * gateway = g_EthernetInterface.get_gateway();
+        SocketAddress sockAddr;
+
+        g_EthernetInterface.get_ip_address(&sockAddr);
+        const char * ip = sockAddr.get_ip_address();
+
+        g_EthernetInterface.get_netmask(&sockAddr);
+        const char * netmask = sockAddr.get_ip_address();
+
+        g_EthernetInterface.get_gateway(&sockAddr);
+        const char * gateway = sockAddr.get_ip_address();
+
         const char * mac = g_EthernetInterface.get_mac_address();
 
         mbed_stats_sys_t stats;

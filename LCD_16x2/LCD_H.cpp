@@ -15,13 +15,13 @@ LCD::LCD(PinName d4,PinName d5, PinName d6, PinName d7, PinName rs, PinName ena)
 void LCD::tglEn()
 {
     en=1;
-    wait_ms(1);
+    ThisThread::sleep_for(1);
     en=0;
 }
 
 void LCD::init()
 {
-    wait_ms(100);
+    ThisThread::sleep_for(100);
 
     ctrl = 0; //Recibir instrucciones
     en=0;
@@ -63,7 +63,7 @@ void LCD::init()
     tglEn();
     data=0b0001; // 1
     tglEn();
-    wait_ms(2);
+    ThisThread::sleep_for(2);
 
     // Entry mode set
     data=0b0000; // 0
@@ -72,7 +72,7 @@ void LCD::init()
     //Shift display to the right. Cursor follows the display shift
     data=0b0001; // 1
     tglEn();
-    wait_ms(2);
+    ThisThread::sleep_for(2);
 }
 
 void LCD::wtrChar(char a)
@@ -95,7 +95,7 @@ void LCD::clr()
     tglEn();
     data=0b0001; // 1
     tglEn();
-    wait_ms(2);
+    ThisThread::sleep_for(2);
 
     // Entry mode set
     data=0b0000; // 0
@@ -104,7 +104,7 @@ void LCD::clr()
     //Shift display to the right. Cursor follows the display shift
     data=0b0001; // 1
     tglEn();
-    wait_ms(2);
+    ThisThread::sleep_for(2);
 }
 
 void LCD::wtrString(string format)
@@ -185,25 +185,25 @@ void LCD::setCursor(uint8_t row, uint8_t column)
         {
             data=0b1000;
             tglEn();
-            wait_ms(200);
+            ThisThread::sleep_for(200);
             break;
         }
         case 1:
         {
             data=0b1100;
             tglEn();
-            wait_ms(200);
+            ThisThread::sleep_for(200);
             break;
         }
         default:
         {
             data=0b1000;
             tglEn();
-            wait_ms(200);
+            ThisThread::sleep_for(200);
             break;
         }
     }
     data=column;
     tglEn();
-    wait_ms(200);
+    ThisThread::sleep_for(200);
 }
