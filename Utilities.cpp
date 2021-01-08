@@ -41,6 +41,7 @@ namespace Utility
     // ensure our output does not come out garbled on the serial terminal.
     PlatformMutex                    g_STDIOMutex; 
     EthernetInterface                g_EthernetInterface;
+    NetworkInterface *               g_pNetworkInterface;
     //NTPClient                        g_NTPClient(&g_EthernetInterface);
     NuerteyNTPClient                 g_NTPClient(&g_EthernetInterface);
 
@@ -124,6 +125,14 @@ namespace Utility
         g_pMessage.reset();
 
         randLIB_seed_random();
+
+        g_pNetworkInterface = NetworkInterface::get_default_instance();
+
+        if (!g_pNetworkInterface)
+        {
+            printf("FATAL! No network interface found.\n");
+            return;
+        }
 
         // Asynchronously monitor for Network Status events.
         g_EthernetInterface.attach(&NetworkStatusCallback);

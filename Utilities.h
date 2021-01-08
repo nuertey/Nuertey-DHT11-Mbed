@@ -60,6 +60,10 @@
 #error "[NOT_SUPPORTED] MBED Heap Statistics Not Enabled"
 #endif
 
+#if !defined(MBED_CONF_NSAPI_SOCKET_STATS_ENABLED)
+#error "[NOT_SUPPORTED] Socket Statistics not supported"
+#endif
+
 static const uint8_t     TOTAL_NUMBER_OF_HOURS_IN_A_DAY =   24;
 static const uint16_t    MAXIMUM_WRITE_RETRIES          =   20;
 static const uint16_t    MAXIMUM_READ_RETRIES           =   20; // Small timeout and many retries is preferred to... 
@@ -278,6 +282,7 @@ namespace Utility
 
     extern PlatformMutex                    g_STDIOMutex;
     extern EthernetInterface                g_EthernetInterface;
+    extern NetworkInterface *               g_pNetworkInterface;
     //extern NTPClient                        g_NTPClient;
     extern NuerteyNTPClient                 g_NTPClient;
 
@@ -465,7 +470,7 @@ namespace Utility
                     }
                 }  while (retVal < 0);
 
-                g_EthernetInterface.get_ip_address(&serverSocketAddress);
+                //g_EthernetInterface.get_ip_address(&serverSocketAddress);
                 ipAddress = std::string(serverSocketAddress.get_ip_address());
             }
         }
@@ -477,7 +482,7 @@ namespace Utility
     std::string IntegerToHex(T i)
     {
         std::stringstream stream;
-        stream << std::showbase << std::setfill ('0') << std::setw(sizeof(T)) << std::hex << std::uppercase << static_cast<T>(i);
+        stream << std::showbase << std::setfill('0') << std::setw(sizeof(T)) << std::hex << std::uppercase << static_cast<T>(i);
         return stream.str();
     }
 
@@ -491,17 +496,9 @@ namespace Utility
 
     const auto ComposeSystemStatistics = []()
     {
-        SocketAddress sockAddr;
-
-        g_EthernetInterface.get_ip_address(&sockAddr);
-        const char * ip = sockAddr.get_ip_address();
-
-        g_EthernetInterface.get_netmask(&sockAddr);
-        const char * netmask = sockAddr.get_ip_address();
-
-        g_EthernetInterface.get_gateway(&sockAddr);
-        const char * gateway = sockAddr.get_ip_address();
-
+        const char * ip = g_EthernetInterface.get_ip_address();
+        const char * netmask = g_EthernetInterface.get_netmask();
+        const char * gateway = g_EthernetInterface.get_gateway();
         const char * mac = g_EthernetInterface.get_mac_address();
 
         mbed_stats_sys_t stats;
