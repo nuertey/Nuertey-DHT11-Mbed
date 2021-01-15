@@ -197,13 +197,27 @@ DigitalOut        g_External10mmLEDYellow(PG_1);// LED Current = 18mA; Voltage D
 // Signal   : I/O
 DigitalOut        g_External10mmLEDRed(PE_14);   // LED Current = 18mA; Voltage Drop = 2.0V; Calculated Resistance = 72.22Ω
 
-// TBD Nuertey Odzeyem; select, connect and document PWM pins.
-//PwmOut            g_External10mmLEDYellow(PA_5);
-//PwmOut            g_External10mmLEDRed(PA_5);
+// =====================================================================
+// NUCLEO-F767ZI PWM pins/connections to 10mm LEDs are documented below:
+// =====================================================================
+
+// Connector: CN10 
+// Pin      : 29 
+// Pin Name : D32
+// STM32 Pin: PA0
+// Signal   : TIMER_C_PWM1
+PwmOut            g_ExternalPWMLEDYellow(PA_0);
+
+// Connector: CN10 
+// Pin      : 31 
+// Pin Name : D33
+// STM32 Pin: PB0
+// Signal   : TIMER_D_PWM1
+PwmOut            g_ExternalPWMLEDRed(PB_0);
 
 Thread            g_External10mmLEDThread1;
-//Thread            g_External10mmLEDThread2;
-//Thread            g_External10mmLEDThread3;
+Thread            g_External10mmLEDThread2;
+Thread            g_External10mmLEDThread3;
 Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
 
@@ -395,9 +409,16 @@ void LEDTriangularWave(PwmOut * pExternalLEDPin)
     auto result = std::max_element(g_TriangleWaveform, g_TriangleWaveform + NUMBER_OF_TRIANGULAR_SAMPLES);
     for (auto & dutyCycle : g_TriangleWaveform) 
     {
+        // Set the output duty-cycle, specified as a percentage (float)
+        //
+        // Parameters
+        //    value A floating-point value representing the output duty-cycle, 
+        //    specified as a percentage. The value should lie between 0.0f 
+        //    (representing on 0%) and 1.0f (representing on 100%). Values 
+        //    outside this range will be saturated to 0.0f or 1.0f.
         float scaledDutyCycle = (dutyCycle/(*result));
         *pExternalLEDPin = scaledDutyCycle;
-        ThisThread::sleep_for(200);
+        ThisThread::sleep_for(160);
     }
 }
 
@@ -406,9 +427,16 @@ void LEDSinusoidalWave(PwmOut * pExternalLEDPin)
     auto result = std::max_element(g_SineWaveform, g_SineWaveform + NUMBER_OF_SINUSOID_SAMPLES);
     for (auto & dutyCycle : g_SineWaveform) 
     {
+        // Set the output duty-cycle, specified as a percentage (float)
+        //
+        // Parameters
+        //    value A floating-point value representing the output duty-cycle, 
+        //    specified as a percentage. The value should lie between 0.0f 
+        //    (representing on 0%) and 1.0f (representing on 100%). Values 
+        //    outside this range will be saturated to 0.0f or 1.0f.
         float scaledDutyCycle = (dutyCycle/(*result));
         *pExternalLEDPin = scaledDutyCycle;
-        ThisThread::sleep_for(200);
+        ThisThread::sleep_for(80);
     }
 }
 
@@ -434,50 +462,50 @@ int main()
     // It seems that Mbed Callback class can only take in one argument.
     // Not to worry, we will improvise with an aggregate class type.
     ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
-    ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
-    ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
+    //ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
+    //ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
     g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
-    //g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_External10mmLEDYellow));
-    //g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_External10mmLEDRed));
+    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
+    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
 
     // Forget not proper thread joins:
-    //g_External10mmLEDThread2.join();
-    //g_External10mmLEDThread3.join();
+    g_External10mmLEDThread2.join();
+    g_External10mmLEDThread3.join();
 
-    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
-    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
+    //g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
+    //g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
 
-    Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
-                                       CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
-                                       DHT11SensorAcquisition);
-    if (!Utility::gs_CloudCommunicationsEventIdentifier)
-    {
-        printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
-    }
-
-    // To further save RAM, as we have no other work to do in main() after
-    // initialization, we will dispatch the global event queue from here,
-    // thus avoiding the need to create a separate dispatch thread (context).
-
-    // The dispatch function provides the context for running
-    // of the queue and can take a millisecond timeout to run for a
-    // fixed time or to just dispatch any pending events.
-    printf("\r\nAbout to dispatch regular and periodic events... \r\n");
-    Utility::gs_MasterEventQueue.dispatch_forever();
-    
-    Utility::g_STDIOMutex.lock();
-    printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
-    Utility::g_STDIOMutex.unlock();
-
-    // As we are done dispatching, reset the event id so that potential
-    // callbacks do not attempt to perform actions on the Master Event Queue.
-    Utility::gs_CloudCommunicationsEventIdentifier = 0;
+    //Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
+    //                                   CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
+    //                                   DHT11SensorAcquisition);
+    //if (!Utility::gs_CloudCommunicationsEventIdentifier)
+    //{
+    //    printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
+    //}
+    //
+    //// To further save RAM, as we have no other work to do in main() after
+    //// initialization, we will dispatch the global event queue from here,
+    //// thus avoiding the need to create a separate dispatch thread (context).
+    //
+    //// The dispatch function provides the context for running
+    //// of the queue and can take a millisecond timeout to run for a
+    //// fixed time or to just dispatch any pending events.
+    //printf("\r\nAbout to dispatch regular and periodic events... \r\n");
+    //Utility::gs_MasterEventQueue.dispatch_forever();
+    //
+    //Utility::g_STDIOMutex.lock();
+    //printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
+    //Utility::g_STDIOMutex.unlock();
+    //
+    //// As we are done dispatching, reset the event id so that potential
+    //// callbacks do not attempt to perform actions on the Master Event Queue.
+    //Utility::gs_CloudCommunicationsEventIdentifier = 0;
 
     // Forget not proper thread joins:
     g_External10mmLEDThread1.join();
-    g_External10mmLEDThread4.join();
-    g_External10mmLEDThread5.join();
+    //g_External10mmLEDThread4.join();
+    //g_External10mmLEDThread5.join();
 
     Utility::ReleaseGlobalResources();
 
