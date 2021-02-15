@@ -93,7 +93,7 @@ public:
     
     virtual ~NuerteyMQTTClient();
 
-    void Connect();
+    bool Connect();
     void Disconnect();
 
     void Subscribe(const char * topic);
@@ -120,15 +120,15 @@ public:
  
     static void MessageArrived(MQTT::MessageData & data);
         
-    static uint64_t                                     m_ArrivedMessagesCount;
-    static uint64_t                                     m_OldMessagesCount;
+    static uint64_t                               m_ArrivedMessagesCount;
+    static uint64_t                               m_OldMessagesCount;
 private:
-    NetworkInterface *                                  m_pNetworkInterface;
-    MQTTNetwork                                         m_MQTTNetwork;
-    MQTT::Client<MQTTNetwork, Countdown, (2*1024), 50>  m_PahoMQTTclient; // Increase the maximum packet size to 2Kb.
-                                                                          // Increase the maximum number of subscriptions to 50.
-    std::optional<std::string>                          m_MQTTBrokerDomainName;  // Domain name would not always necessarily exist...
-    std::string                                         m_MQTTBrokerAddress;     // However IP Address always would.
-    uint16_t                                            m_MQTTBrokerPort;
-    bool                                                m_IsMQTTSessionEstablished;
+    NetworkInterface *                            m_pNetworkInterface;
+    MQTTNetwork                                   m_MQTTNetwork;
+    MQTT::Client<MQTTNetwork, Countdown, 1024, 5> m_PahoMQTTclient;       // Increase the maximum packet size to 1Kb.
+                                                                          // Increase the maximum number of subscriptions to 5.
+    std::optional<std::string>                    m_MQTTBrokerDomainName; // Domain name would not always necessarily exist...
+    std::string                                   m_MQTTBrokerAddress;    // However IP Address always would.
+    uint16_t                                      m_MQTTBrokerPort;
+    bool                                          m_IsMQTTSessionEstablished;
 };

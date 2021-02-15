@@ -33,6 +33,18 @@
 *      - Pulses of different TON and TOFF are decoded as logic 1 or 
 *        logic 0 or start pulse or end of frame.
 * 
+*      - Power Supply: 3 to 5V DC, 2.5mA max current use during 
+*        conversion (while requesting data).
+* 
+*      - Operating range: Good for 20-80% humidity readings with 5% 
+*        accuracy.
+* 
+*      - Good for 0-50°C temperature readings ±2°C accuracy.
+* 
+*      - No more than 1 Hz sampling rate (once every second).
+* 
+*      - Body size: 15.5mm x 12mm x 5.5mm. 
+* 
 *   2) LCDs (Liquid Crystal Displays) are used in embedded system 
 *      applications for displaying various parameters and statuses of 
 *      the system. The LCD 16x2 has the following characteristics:
@@ -87,7 +99,10 @@
 
 // Laptop running Mosquitto MQTT Broker/Server hosted on Ubuntu Linux
 // outward-facing IP address. Port is particular to the MQTT protocol.
-static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
+
+// MQTT Broker IP on local LAN gives better results than outward-facing IP. 
+static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
 static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
 
 // As we are constrained on embedded, prefer to send many topics with
@@ -98,7 +113,8 @@ static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767Z
 static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
 
 static const uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 milliseconds.
-static const float    DHT11_DEVICE_STATE_CHANGE_RATE(2.0);      // 2 milliseconds.
+static const float    DHT11_DEVICE_STABLE_STATUS_DELAY(1.0);    // 1 milliseconds.
+static const float    DHT11_DEVICE_ERROR_STATUS_DELAY(5.0);     // 5 milliseconds.
 
 // DHT11 uses a simplified single-wire bidirectional communication protocol.
 // It follows a Master/Slave paradigm [NUCLEO-F767ZI=Master, DHT11=Slave] 
@@ -298,99 +314,107 @@ void DHT11SensorAcquisition()
 
     // Indicate with the blue LED that MQTT network initialization is ongoing.
     g_LEDBlue = LED_ON;
-    theMQTTClient.Connect();
+    bool retVal = theMQTTClient.Connect();
 
-    // This echo back from the server is NOT just for our peace of mind, 
-    // NOT just to ensure that publishing did in fact get to the server/broker. 
-    // It is also to ensure that the internal design of NuerteyMQTTClient
-    // with the invocation of ::Yield() after every publish, is happy.
-    // That design pattern is mandated by the embedded MQTT library to
-    // facilitate context switching. Hence subscribe to every topic you
-    // aim to publish.
-    theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-    theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
-    g_LEDBlue = LED_OFF;
-
-    while (1)
+    if (retVal)
     {
-        ThisThread::sleep_for(DHT11_DEVICE_STATE_CHANGE_RATE);
+        // This echo back from the server is NOT just for our peace of mind, 
+        // NOT just to ensure that publishing did in fact get to the server/broker. 
+        // It is also to ensure that the internal design of NuerteyMQTTClient
+        // with the invocation of ::Yield() after every publish, is happy.
+        // That design pattern is mandated by the embedded MQTT library to
+        // facilitate context switching. Hence subscribe to every topic you
+        // aim to publish.
+        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+        g_LEDBlue = LED_OFF;
 
-        // Indicate that we are reading from DHT11 with green LED.
-        g_LEDGreen = LED_ON;
+        ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
 
-        result = g_DHT11.readData();
-        if (eError::ERROR_NONE == result)
+        while (1)
         {
-            // Clear red LED indicating previous error.
-            g_LEDRed = LED_OFF;
+            // Indicate that we are reading from DHT11 with green LED.
+            g_LEDGreen = LED_ON;
 
-            c   = g_DHT11.ReadTemperature(eScale::CELCIUS);
-            f   = g_DHT11.ReadTemperature(eScale::FARENHEIT);
-            k   = g_DHT11.ReadTemperature(eScale::KELVIN);
-            h   = g_DHT11.ReadHumidity();
-            dp  = g_DHT11.CalcdewPoint(c, h);
-            dpf = g_DHT11.CalcdewPointFast(c, h);
+            result = g_DHT11.readData();
+            if (eError::ERROR_NONE == result)
+            {
+                // Clear red LED indicating previous error.
+                g_LEDRed = LED_OFF;
 
-            g_LCD16x2.clr();
-            g_LCD16x2.setCursor(0, 0);
-            g_LCD16x2.wtrString("Temp: ");
-            g_LCD16x2.wtrNumber(c);
-            g_LCD16x2.wtrString(" C");
-            g_LCD16x2.setCursor(1, 0);
-            g_LCD16x2.wtrString("Humi: ");
-            g_LCD16x2.wtrNumber(h);
-            g_LCD16x2.wtrString(" % RH");
+                c   = g_DHT11.ReadTemperature(eScale::CELCIUS);
+                f   = g_DHT11.ReadTemperature(eScale::FARENHEIT);
+                k   = g_DHT11.ReadTemperature(eScale::KELVIN);
+                h   = g_DHT11.ReadHumidity();
+                dp  = g_DHT11.CalcdewPoint(c, h);
+                dpf = g_DHT11.CalcdewPointFast(c, h);
 
-            Utility::g_STDIOMutex.lock();
-            printf("\nTemperature in Kelvin: %4.2f, Celcius: %4.2f, Farenheit %4.2f\n", k, c, f);
-            printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
-            Utility::g_STDIOMutex.unlock();
+                g_LCD16x2.clr();
+                g_LCD16x2.setCursor(0, 0);
+                g_LCD16x2.wtrString("Temp: ");
+                g_LCD16x2.wtrNumber(c);
+                g_LCD16x2.wtrString(" C");
+                g_LCD16x2.setCursor(1, 0);
+                g_LCD16x2.wtrString("Humi: ");
+                g_LCD16x2.wtrNumber(h);
+                g_LCD16x2.wtrString(" % RH");
 
-            // Indicate that publishing is about to commence with the blue LED.
-            g_LEDBlue = LED_ON;
-            
-            std::string sensorTemperature = std::to_string(c);
-            theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
-                                   (void *)sensorTemperature.c_str(), 
-                                   sensorTemperature.size() + 1);  
+                Utility::g_STDIOMutex.lock();
+                printf("\nTemperature in Kelvin: %4.2f, Celcius: %4.2f, Farenheit %4.2f\n", k, c, f);
+                printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
+                Utility::g_STDIOMutex.unlock();
 
-            std::string sensorHumidity = std::to_string(h);
-            theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
-                                   (void *)sensorHumidity.c_str(), 
-                                   sensorHumidity.size() + 1);  
-            
-            // Indicate that publishing was successful and a message was 
-            // received in response by turning off the blue LED.
-            g_LEDBlue = LED_OFF; 
+                // Indicate that publishing is about to commence with the blue LED.
+                g_LEDBlue = LED_ON;
+                
+                std::string sensorTemperature = std::to_string(c);
+                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
+                                       (void *)sensorTemperature.c_str(), 
+                                       sensorTemperature.size() + 1);  
+
+                std::string sensorHumidity = std::to_string(h);
+                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
+                                       (void *)sensorHumidity.c_str(), 
+                                       sensorHumidity.size() + 1);  
+                
+                // Indicate that publishing was successful and a message was 
+                // received in response by turning off the blue LED.
+                g_LEDBlue = LED_OFF; 
+            }
+            else
+            {
+                // Indicate with the red LED that an error occurred.
+                g_LEDRed = LED_ON;
+
+                g_LCD16x2.clr();
+                g_LCD16x2.setCursor(0, 0);
+                g_LCD16x2.wtrString("Error!");
+
+                Utility::g_STDIOMutex.lock();
+                printf("Error! g_DHT11.readData() returned: [%d] -> %s\n", 
+                          Utility::ToUnderlyingType(result), ToString(result).c_str());
+                Utility::g_STDIOMutex.unlock();
+                ThisThread::sleep_for(DHT11_DEVICE_ERROR_STATUS_DELAY);
+            }
+
+            g_LEDGreen = LED_OFF;
         }
-        else
-        {
-            // Indicate with the red LED that an error occurred.
-            g_LEDRed = LED_ON;
 
-            g_LCD16x2.clr();
-            g_LCD16x2.setCursor(0, 0);
-            g_LCD16x2.wtrString("Error!");
+        // Indicate with the blue LED that MQTT network de-initialization is ongoing.
+        g_LEDBlue = LED_ON;
 
-            Utility::g_STDIOMutex.lock();
-            printf("Error! g_DHT11.readData() returned: [%d] -> %s\n", 
-                      Utility::ToUnderlyingType(result), ToString(result).c_str());
-            Utility::g_STDIOMutex.unlock();
-        }
+        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
 
-        g_LEDGreen = LED_OFF;
+        // Bring down the MQTT session.
+        theMQTTClient.Disconnect();
+        
+        g_LEDBlue = LED_OFF;
     }
-
-    // Indicate with the blue LED that MQTT network de-initialization is ongoing.
-    g_LEDBlue = LED_ON;
-
-    theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-    theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
-
-    // Bring down the MQTT session.
-    theMQTTClient.Disconnect();
-    
-    g_LEDBlue = LED_OFF;
+    else
+    {
+        g_LEDBlue = LED_OFF;
+    }
 }
 
 void LEDBlinker(ExternalLED_t * pExternalLED)
@@ -418,7 +442,7 @@ void LEDTriangularWave(PwmOut * pExternalLEDPin)
         //    outside this range will be saturated to 0.0f or 1.0f.
         float scaledDutyCycle = (dutyCycle/(*result));
         *pExternalLEDPin = scaledDutyCycle;
-        ThisThread::sleep_for(160);
+        ThisThread::sleep_for(200);
     }
 }
 
@@ -436,7 +460,7 @@ void LEDSinusoidalWave(PwmOut * pExternalLEDPin)
         //    outside this range will be saturated to 0.0f or 1.0f.
         float scaledDutyCycle = (dutyCycle/(*result));
         *pExternalLEDPin = scaledDutyCycle;
-        ThisThread::sleep_for(80);
+        ThisThread::sleep_for(40);
     }
 }
 
@@ -476,31 +500,31 @@ int main()
     //g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
     //g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
 
-    //Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
-    //                                   CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
-    //                                   DHT11SensorAcquisition);
-    //if (!Utility::gs_CloudCommunicationsEventIdentifier)
-    //{
-    //    printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
-    //}
-    //
-    //// To further save RAM, as we have no other work to do in main() after
-    //// initialization, we will dispatch the global event queue from here,
-    //// thus avoiding the need to create a separate dispatch thread (context).
-    //
-    //// The dispatch function provides the context for running
-    //// of the queue and can take a millisecond timeout to run for a
-    //// fixed time or to just dispatch any pending events.
-    //printf("\r\nAbout to dispatch regular and periodic events... \r\n");
-    //Utility::gs_MasterEventQueue.dispatch_forever();
-    //
-    //Utility::g_STDIOMutex.lock();
-    //printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
-    //Utility::g_STDIOMutex.unlock();
-    //
-    //// As we are done dispatching, reset the event id so that potential
-    //// callbacks do not attempt to perform actions on the Master Event Queue.
-    //Utility::gs_CloudCommunicationsEventIdentifier = 0;
+    Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
+                                       CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
+                                       DHT11SensorAcquisition);
+    if (!Utility::gs_CloudCommunicationsEventIdentifier)
+    {
+        printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
+    }
+    
+    // To further save RAM, as we have no other work to do in main() after
+    // initialization, we will dispatch the global event queue from here,
+    // thus avoiding the need to create a separate dispatch thread (context).
+    
+    // The dispatch function provides the context for running
+    // of the queue and can take a millisecond timeout to run for a
+    // fixed time or to just dispatch any pending events.
+    printf("\r\nAbout to dispatch regular and periodic events... \r\n");
+    Utility::gs_MasterEventQueue.dispatch_forever();
+    
+    Utility::g_STDIOMutex.lock();
+    printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
+    Utility::g_STDIOMutex.unlock();
+    
+    // As we are done dispatching, reset the event id so that potential
+    // callbacks do not attempt to perform actions on the Master Event Queue.
+    Utility::gs_CloudCommunicationsEventIdentifier = 0;
 
     // Forget not proper thread joins:
     g_External10mmLEDThread1.join();

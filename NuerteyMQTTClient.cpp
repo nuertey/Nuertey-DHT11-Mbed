@@ -1,11 +1,16 @@
 #include "NuerteyMQTTClient.h"
 #include "Utilities.h"
+#include "mbed-trace/mbed_trace.h"
 #include "lwip/arch.h"
 #include "lwip/tcp.h"
 #include "lwip/netif.h"
 //#include "nuertey_mqtt.pb.h"
 
-const std::string NuerteyMQTTClient::DEFAULT_MQTT_BROKER_ADDRESS("broker.hivemq.com");
+#define TRACE_GROUP  "NuerteyMQTTClient"
+
+// Laptop running Mosquitto MQTT Broker/Server hosted on Ubuntu Linux.
+// MQTT Broker IP on local LAN gives better results than outward-facing IP.
+const std::string NuerteyMQTTClient::DEFAULT_MQTT_BROKER_ADDRESS("10.50.10.25");
 const std::string NuerteyMQTTClient::DEFAULT_MQTT_CLIENT_IDENTIFIER("nuertey-nucleo_f767zi");
 const std::string NuerteyMQTTClient::DEFAULT_MQTT_USERNAME("testuser");
 const std::string NuerteyMQTTClient::DEFAULT_MQTT_PASSWORD("testpassword");
@@ -39,14 +44,16 @@ NuerteyMQTTClient::NuerteyMQTTClient(NetworkInterface * pNetworkInterface, const
     , m_MQTTBrokerPort(port)
     , m_IsMQTTSessionEstablished(false)
 {
+    mbed_trace_init();
 }
 
 NuerteyMQTTClient::~NuerteyMQTTClient()
 {
 }
 
-void NuerteyMQTTClient::Connect()
+bool NuerteyMQTTClient::Connect()
 {
+    bool result = false;
     auto [ipAddress, domainName] = Utility::ResolveAddressIfDomainName(m_MQTTBrokerAddress);
     m_MQTTBrokerAddress = ipAddress;
     if (domainName)
@@ -65,8 +72,15 @@ void NuerteyMQTTClient::Connect()
         MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
         data.MQTTVersion = 3;
         data.clientID.cstring = (char *)DEFAULT_MQTT_CLIENT_IDENTIFIER.c_str();
-        data.username.cstring = (char *)DEFAULT_MQTT_USERNAME.c_str();
-        data.password.cstring = (char *)DEFAULT_MQTT_PASSWORD.c_str();
+
+        // Ensure to configure the MQTT Broker to "allow_anonymous true":
+        //
+        // cat /etc/mosquitto/conf.d/default.conf
+        // cat /etc/mosquitto/mosquitto.conf
+
+        //data.username.cstring = (char *)DEFAULT_MQTT_USERNAME.c_str();
+        //data.password.cstring = (char *)DEFAULT_MQTT_PASSWORD.c_str();
+
         // Broker should wipe the session each time we disconnect.
         // Otherwise our subscriptions are retained and messages
         // sent with Quality of Service 1 and 2 are buffered by the broker.
@@ -74,15 +88,19 @@ void NuerteyMQTTClient::Connect()
         int retVal = MQTT::FAILURE;
         if ((retVal = m_PahoMQTTclient.connect(data)) != MQTT::SUCCESS)
         {
-            printf("\r\n\r\nError! MQTT.connect() returned: [%d].\n", retVal);
+            tr_error("Error! MQTTClient.connect() returned: [%d] -> %s\n", 
+                  retVal, ToString(Utility::ToEnum<MQTTConnectionError_t, int>(retVal)).c_str());
         }
         else
         {
             m_IsMQTTSessionEstablished = true;
             m_ArrivedMessagesCount = 0;
             printf("\r\n\r\nMQTT session established with broker at [%s:%d]\r\n", m_MQTTBrokerAddress.c_str(), m_MQTTBrokerPort);
+            result = true;
         }
     }
+
+    return result;
 }
 
 void NuerteyMQTTClient::Disconnect()
