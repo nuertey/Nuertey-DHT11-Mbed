@@ -6,17 +6,19 @@
 *    output to an LCD 16x2 display, all mocked-up via a breadboard. This
 *    allows us to periodically obtain temperature and humidity readings.
 * 
-*    Furthermore, the application continuously blinks 3 10mm external LEDs
-*    connected to various I/O ports at different frequencies.
+*    Furthermore, the application continuously blinks 3 10mm external 
+*    LEDs connected to various I/O ports at different frequencies.
 * 
 *    And lastly, the application employs PWM output pins on the 
-*    NUCLEO-F767ZI to dim the 10mm LEDs according to precomputed 
+*    NUCLEO-F767ZI to vary the intensity of the 10mm LEDs according to 
+*    an on-the-fly calculated sawtooth waveform pattern and, precomputed 
 *    triangular and sinusoidal waveform function values. Essentially,  
 *    the values of said waveforms are scaled and used as the duty cycle
 *    in driving, dimming, and brightening the 10mm LEDs.
 *
 * @brief   Input: DHT11 temperature/humidity readings. Output: LCD 16x2.
-*          Output: various cool LED patterns. 
+*          Output: Various cool LED patterns of continuously changing
+*                  intensity. 
 * 
 * @note    Enumerated Peripheral Components Details Are As Follows:
 * 
@@ -216,6 +218,13 @@ DigitalOut        g_External10mmLEDRed(PE_14);   // LED Current = 18mA; Voltage 
 // =====================================================================
 // NUCLEO-F767ZI PWM pins/connections to 10mm LEDs are documented below:
 // =====================================================================
+
+// Connector: CN7 
+// Pin      : 18 
+// Pin Name : D9
+// STM32 Pin: PD15
+// Signal   : TIMER_B_PWM2
+PwmOut            g_ExternalPWMLEDGreen(PD_15);
 
 // Connector: CN10 
 // Pin      : 29 
@@ -428,6 +437,29 @@ void LEDBlinker(ExternalLED_t * pExternalLED)
     }
 }
 
+void LEDSawToothWave(PwmOut * pExternalLEDPin)
+{
+    while (1)
+    {
+        // Gradually change the intensity of the LED according to the
+        // saw-tooth waveform pattern.
+        *pExternalLEDPin = *pExternalLEDPin + 0.01;
+        ThisThread::sleep_for(200);
+
+        // Set the output duty-cycle, specified as a percentage (float)
+        //
+        // Parameters
+        //    value A floating-point value representing the output duty-cycle, 
+        //    specified as a percentage. The value should lie between 0.0f 
+        //    (representing on 0%) and 1.0f (representing on 100%). Values 
+        //    outside this range will be saturated to 0.0f or 1.0f.
+        if (*pExternalLEDPin == 1.0)
+        {
+            *pExternalLEDPin = 0;
+        }
+    }
+}
+
 void LEDTriangularWave(PwmOut * pExternalLEDPin)
 {
     auto result = std::max_element(g_TriangleWaveform, g_TriangleWaveform + NUMBER_OF_TRIANGULAR_SAMPLES);
@@ -485,11 +517,12 @@ int main()
 
     // It seems that Mbed Callback class can only take in one argument.
     // Not to worry, we will improvise with an aggregate class type.
-    ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
+    //ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
     //ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
     //ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
-    g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
+    //g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
+    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
     g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
     g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
 
