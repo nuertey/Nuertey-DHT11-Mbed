@@ -78,10 +78,21 @@
 *      - And lastly, the LCD 16x2 has 8 data lines and 3 control lines 
 *        that can be used for control purposes.
 *
-* @warning   The I/Os of STM32 NUCLEO-F767ZI are 3.3 V compatible 
+* @warning   The I/O pins of STM32 NUCLEO-F767ZI are 3.3 V compatible 
 *            instead of 5 V for say, the Arduino Uno V3 microcontroller.
 *            Hence values for current-limiting resistors placed in series
 *            with the external 10mm LEDs must be adjusted accordingly.
+* 
+*            Furthermore, the STM32 GPIO pins are not numbered 1-64; rather, 
+*            they are named after the MCU IO port that they are controlled
+*            by. Hence PA_5 is pin 5 on port A. This means that physical
+*            pin location may not be related to the pin name. Consult 
+*            the "Extension connectors" sub-chapter of the "Hardware 
+*            layout and configuration" chapter of the STM32 Nucleo-144 
+*            boards UM1974 User manual (en.DM00244518.pdf) to know where
+*            each pin is located. Note that all those pins shown can be 
+*            used as GPIOs, however most of them also have alternative 
+*            functions which are indicated on those diagrams.
 *
 * @author    Nuertey Odzeyem
 * 
