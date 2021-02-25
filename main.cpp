@@ -187,7 +187,7 @@ DHT               g_DHT11(PB_5, eType::DHT11);
 // Pin Name : D65
 // STM32 Pin: PG0
 // Signal   : I/O
-LCD               g_LCD16x2(PA_7, PA_6, PA_5, PG_2, PG_3, PG_0); // RS, RW, D4, D5, D6, D7
+LCD               g_LCD16x2(PA_5, PG_2, PG_3, PG_0, PA_7, PA_6); // D4, D5, D6, D7, RS, E
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
