@@ -29,24 +29,6 @@
 *      - It can measure relative humidity in percentages (20 to 90% RH) 
 *        and temperature in degree Celsius in the range of 0 to 50°C.
 * 
-*      - It has 4 pins; one of which is used for data communication in 
-*        serial form.
-* 
-*      - Pulses of different TON and TOFF are decoded as logic 1 or 
-*        logic 0 or start pulse or end of frame.
-* 
-*      - Power Supply: 3 to 5V DC, 2.5mA max current use during 
-*        conversion (while requesting data).
-* 
-*      - Operating range: Good for 20-80% humidity readings with 5% 
-*        accuracy.
-* 
-*      - Good for 0-50°C temperature readings ±2°C accuracy.
-* 
-*      - No more than 1 Hz sampling rate (once every second).
-* 
-*      - Body size: 15.5mm x 12mm x 5.5mm. 
-* 
 *   2) LCDs (Liquid Crystal Displays) are used in embedded system 
 *      applications for displaying various parameters and statuses of 
 *      the system. The LCD 16x2 has the following characteristics:
@@ -101,7 +83,7 @@
 * @copyright Copyright (c) 2021 Nuertey Odzeyem. All Rights Reserved.
 ***********************************************************************/
 #include "mbed.h"
-#include "DHT.h"
+#include "NuerteyDHT11Device.h"
 #include "LCD_H.h"
 #include "Utilities.h"
 #include "waveforms.h"
@@ -125,28 +107,25 @@ static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
 static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767ZI/Temperature";
 static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
 
-static const uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 milliseconds.
-static const float    DHT11_DEVICE_STABLE_STATUS_DELAY(1.0);    // 1 milliseconds.
-static const float    DHT11_DEVICE_ERROR_STATUS_DELAY(5.0);     // 5 milliseconds.
-
-// DHT11 uses a simplified single-wire bidirectional communication protocol.
-// It follows a Master/Slave paradigm [NUCLEO-F767ZI=Master, DHT11=Slave] 
-// with the MCU observing these states:
-//
-// WAITING, READING.
-static const uint32_t DHT11_DEVICE_WAITING(0UL);
-static const uint32_t DHT11_DEVICE_READING(1UL);
+static constexpr uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 milliseconds.
+static constexpr uint32_t DHT11_DEVICE_STABLE_STATUS_DELAY(1000);   // 1 second.
+static constexpr uint32_t DHT11_DEVICE_SAMPLING_PERIOD(3000);       // 3 seconds.
 
 // DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line
 // serial. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
-// are designated by [CN7, CN8, CN9, CN10].
+// are designated by [CN7, CN8, CN9, CN10]. 
 //
-// Connector: CN7 
-// Pin      : 13 
-// Pin Name : D22
-// STM32 Pin: PB5
-// Signal   : SPI_B_MOSI
-DHT               g_DHT11(PB_5, eType::DHT11);
+// From prior successful testing of DHT11 on Arduino Uno, and matching 
+// up the specific pins on Arduino with the "Arduino Support" section of
+// the STM32 Zio connectors, I isolated the following pin as the 
+// Arduino-equivalent data pin:
+//
+// Connector: CN10 
+// Pin      : 10 
+// Pin Name : D3
+// STM32 Pin: PE13
+// Signal   : TIMER_A_PWM3
+NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 
 // LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit
 // interface. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
@@ -257,35 +236,6 @@ Thread            g_External10mmLEDThread3;
 Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
 
-// =========================================================
-// Free-Floating General Helper Functions To Be Used By All:
-// =========================================================
-using DHT11StatusCodesMap_t = std::map<eError, std::string>;
-using IndexElementDHT11_t   = DHT11StatusCodesMap_t::value_type;
-
-inline static auto make_dht11_error_codes_map()
-{
-    DHT11StatusCodesMap_t eMap;
-    
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_NONE, std::string("\"Communication success\"")));
-    eMap.insert(IndexElementDHT11_t(eError::BUS_BUSY, std::string("\"Communication failure - bus busy\"")));
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_NOT_PRESENT, std::string("\"Communication failure - sensor not present on bus\"")));
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_ACK_TOO_LONG, std::string("\"Communication failure - ack too long\"")));
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_SYNC_TIMEOUT, std::string("\"Communication failure - sync timeout\"")));
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_DATA_TIMEOUT, std::string("\"Communication failure - data timeout\"")));
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_CHECKSUM, std::string("\"Checksum error\"")));
-    eMap.insert(IndexElementDHT11_t(eError::ERROR_NO_PATIENCE, std::string("\"Communication failure - no patience\"")));
- 
-    return eMap;
-}
-
-static DHT11StatusCodesMap_t gs_DHT11StatusCodesMap = make_dht11_error_codes_map();
-
-inline std::string ToString(const eError & key)
-{
-    return (gs_DHT11StatusCodesMap.at(key));
-}
-
 // =============================
 // Begin Actual Implementations:
 // =============================
@@ -316,8 +266,6 @@ struct ExternalLED_t
 
 void DHT11SensorAcquisition()
 {
-    eError result;
-    float h = 0.0f, c = 0.0f, f = 0.0f, k = 0.0f, dp = 0.0f, dpf = 0.0f;
     NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
                                     NUERTEY_MQTT_BROKER_ADDRESS,
                                     NUERTEY_MQTT_BROKER_PORT);
@@ -356,18 +304,20 @@ void DHT11SensorAcquisition()
             // Indicate that we are reading from DHT11 with green LED.
             g_LEDGreen = LED_ON;
 
-            result = g_DHT11.readData();
-            if (eError::ERROR_NONE == result)
+            auto result = g_DHT11.ReadData();
+            if (!result)
             {
                 // Clear red LED indicating previous error.
                 g_LEDRed = LED_OFF;
 
-                c   = g_DHT11.ReadTemperature(eScale::CELCIUS);
-                f   = g_DHT11.ReadTemperature(eScale::FARENHEIT);
-                k   = g_DHT11.ReadTemperature(eScale::KELVIN);
-                h   = g_DHT11.ReadHumidity();
-                dp  = g_DHT11.CalcdewPoint(c, h);
-                dpf = g_DHT11.CalcdewPointFast(c, h);
+                auto h = 0.0f, c = 0.0f, f = 0.0f, k = 0.0f, dp = 0.0f, dpf = 0.0f;
+
+                c   = g_DHT11.GetTemperature(TemperatureScale_t::CELCIUS);
+                f   = g_DHT11.GetTemperature(TemperatureScale_t::FARENHEIT);
+                k   = g_DHT11.GetTemperature(TemperatureScale_t::KELVIN);
+                h   = g_DHT11.GetHumidity();
+                dp  = g_DHT11.CalculateDewPoint(c, h);
+                dpf = g_DHT11.CalculateDewPointFast(c, h);
 
                 g_LCD16x2.clr();
                 g_LCD16x2.setCursor(0, 0);
@@ -380,7 +330,7 @@ void DHT11SensorAcquisition()
                 g_LCD16x2.wtrString(" % RH");
 
                 Utility::g_STDIOMutex.lock();
-                printf("\nTemperature in Kelvin: %4.2f, Celcius: %4.2f, Farenheit %4.2f\n", k, c, f);
+                printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
                 printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
                 Utility::g_STDIOMutex.unlock();
 
@@ -411,13 +361,16 @@ void DHT11SensorAcquisition()
                 g_LCD16x2.wtrString("Error!");
 
                 Utility::g_STDIOMutex.lock();
-                printf("Error! g_DHT11.readData() returned: [%d] -> %s\n", 
-                          Utility::ToUnderlyingType(result), ToString(result).c_str());
+                printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
+                      result.value(), result.message().c_str());
                 Utility::g_STDIOMutex.unlock();
-                ThisThread::sleep_for(DHT11_DEVICE_ERROR_STATUS_DELAY);
             }
 
             g_LEDGreen = LED_OFF;
+            // Per datasheet/device specifications:
+            //
+            // "Sampling period：Secondary Greater than 2 seconds"
+            ThisThread::sleep_for(DHT11_DEVICE_SAMPLING_PERIOD);
         }
 
         // Indicate with the blue LED that MQTT network de-initialization is ongoing.
