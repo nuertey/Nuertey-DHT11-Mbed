@@ -122,7 +122,7 @@ static constexpr uint32_t DHT11_DEVICE_SAMPLING_PERIOD(3000);       // 3 seconds
 //
 // Connector: CN10 
 // Pin      : 10 
-// Pin Name : D3
+// Pin Name : D3        * Arduino-equivalent pin name
 // STM32 Pin: PE13
 // Signal   : TIMER_A_PWM3
 NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
@@ -131,42 +131,47 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // interface. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
 // are designated by [CN7, CN8, CN9, CN10].
 //
+// From prior successful testing of the LCD on Arduino Uno, and matching 
+// up the specific pins on Arduino with the "Arduino Support" section of
+// the STM32 Zio connectors, I isolated the following pins as the 
+// Arduino-equivalent pins for the LCD_16x2 library:
+//
+// Connector: CN7 
+// Pin      : 18 
+// Pin Name : D9        * Arduino-equivalent pin name
+// STM32 Pin: PD15
+// Signal   : TIMER_B_PWM2
+//
+// Connector: CN7 
+// Pin      : 16 
+// Pin Name : D10       * Arduino-equivalent pin name
+// STM32 Pin: PD14
+// Signal   : SPI_A_CS/TIM_B_PWM3
+//
 // Connector: CN7 
 // Pin      : 14 
-// Pin Name : D11
+// Pin Name : D11       * Arduino-equivalent pin name
 // STM32 Pin: PA7
-// Signal   : SPI_A_MOSI
+// Signal   : SPI_A_MOSI/TIM_E_PWM1
 //
 // Connector: CN7 
 // Pin      : 12 
-// Pin Name : D12
+// Pin Name : D12       * Arduino-equivalent pin name
 // STM32 Pin: PA6
-// Signal   : SPI_A_MISO
+// Signal   : SPI_A_MISO 
+//
+// Connector: CN10 
+// Pin      : 2 
+// Pin Name : D7        * Arduino-equivalent pin name
+// STM32 Pin: PF13
+// Signal   : I/O
 //
 // Connector: CN7 
-// Pin      : 10 
-// Pin Name : D13
-// STM32 Pin: PA5
-// Signal   : SPI_A_SCK
-//
-// Connector: CN8 
-// Pin      : 14 
-// Pin Name : D49
-// STM32 Pin: PG2
+// Pin      : 20 
+// Pin Name : D8        * Arduino-equivalent pin name
+// STM32 Pin: PF12
 // Signal   : I/O
-//
-// Connector: CN8 
-// Pin      : 16 
-// Pin Name : D50
-// STM32 Pin: PG3
-// Signal   : I/O
-//
-// Connector: CN9 
-// Pin      : 29 
-// Pin Name : D65
-// STM32 Pin: PG0
-// Signal   : I/O
-LCD               g_LCD16x2(PA_5, PG_2, PG_3, PG_0, PA_7, PA_6); // D4, D5, D6, D7, RS, E
+LCD g_LCD16x2(PD_15, PD_14, PA_7, PA_6, PF_13, PF_12); // LCD designated pins: D4, D5, D6, D7, RS, E
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
@@ -276,7 +281,7 @@ void DHT11SensorAcquisition()
     g_LCD16x2.setCursor(0, 0);
     g_LCD16x2.wtrString("NUERTEY ODZEYEM");
     g_LCD16x2.setCursor(1, 0);
-    g_LCD16x2.wtrString("DHT11 with NUCLEO-F767ZI");
+    g_LCD16x2.wtrString("NUCLEO-F767ZI");
     ThisThread::sleep_for(DHT11_DEVICE_USER_OBSERVABILITY_DELAY);
     g_LEDGreen = LED_OFF;
 
@@ -486,13 +491,13 @@ int main()
     //ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
     //g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
-    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
-    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
-    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
+    //g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
+    //g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
+    //g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
 
     // Forget not proper thread joins:
-    g_External10mmLEDThread2.join();
-    g_External10mmLEDThread3.join();
+    //g_External10mmLEDThread2.join();
+    //g_External10mmLEDThread3.join();
 
     //g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
     //g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
@@ -524,7 +529,7 @@ int main()
     Utility::gs_CloudCommunicationsEventIdentifier = 0;
 
     // Forget not proper thread joins:
-    g_External10mmLEDThread1.join();
+    //g_External10mmLEDThread1.join();
     //g_External10mmLEDThread4.join();
     //g_External10mmLEDThread5.join();
 
