@@ -63,33 +63,35 @@
 
 /**
  * @brief LCD panel format
- * 
+ *
  */
-enum lcd_t {
-	LCD16x2,  // 16x2 LCD panel (default)
-	LCD20x2,  // 20x2 LCD panel
-	LCD20x4,  // 20x4 LCD panel
-	LCD40x2   // 40x2 LCD panel
-	};
+enum lcd_t
+{
+    LCD16x2,  // 16x2 LCD panel (default)
+    LCD20x2,  // 20x2 LCD panel
+    LCD20x4,  // 20x4 LCD panel
+    LCD40x2   // 40x2 LCD panel
+};
 
 /**
  * @brief Display modes
- * 
+ *
  */
-enum modes_t{
-	DISPLAY_ON,
-	DISPLAY_OFF,
-	CURSOR_ON,
-	CURSOR_OFF,
-	BLINK_ON,
-	BLINK_OFF,
-	SCROLL_LEFT,
-	SCROLL_RIGHT,
-	LEFT_TO_RIGHT,
-	RIGHT_TO_LEFT,
-	SCROLL_ON,
-	SCROLL_OFF,
-	};
+enum modes_t
+{
+    DISPLAY_ON,
+    DISPLAY_OFF,
+    CURSOR_ON,
+    CURSOR_OFF,
+    BLINK_ON,
+    BLINK_OFF,
+    SCROLL_LEFT,
+    SCROLL_RIGHT,
+    LEFT_TO_RIGHT,
+    RIGHT_TO_LEFT,
+    SCROLL_ON,
+    SCROLL_OFF,
+};
 
 /**
  * @brief A TextLCD interface for driving 4-bit HD44780-based LCDs
@@ -98,109 +100,109 @@ enum modes_t{
  * @code
  * #include "mbed.h"
  * #include "TextLCD.h"
- * 
+ *
  * LCD lcd(p10, p12, p15, p16, p29, p30); // rs, e, d4-d7
- * 
+ *
  * int main() {
  *   lcd.printf("Hello World!\n");
  * }
  * @endcode
  */
-class LCD : public Stream {
+class LCD : public Stream
+{
+public:
 
-	public:
+    /**
+     * @brief Create a TextLCD interface
+     *
+     * @param rs    Instruction/data control line
+     * @param e     Enable line (clock)
+     * @param d4-d7 Data lines for using as a 4-bit interface
+     * @param type  Sets the panel size/addressing mode (default = LCD16x2)
+     */
+    LCD(PinName rs, PinName en, PinName d4, PinName d5, PinName d6, PinName d7, lcd_t type = LCD16x2);
 
-		/** 
-		 * @brief Create a TextLCD interface
-		 *
-		 * @param rs    Instruction/data control line
-		 * @param e     Enable line (clock)
-		 * @param d4-d7 Data lines for using as a 4-bit interface
-		 * @param type  Sets the panel size/addressing mode (default = LCD16x2)
-		 */
-		LCD(PinName rs, PinName en, PinName d4, PinName d5, PinName d6, PinName d7, lcd_t type = LCD16x2);
+    /**
+     * @brief Clear the screen and locate to 0,0
+     *
+     */
+    void cls();
 
-		/**
-		 * @brief Clear the screen and locate to 0,0
-		 * 
-		 */
-		void cls();
+    /**
+     * @brief Locate to a screen column and row
+     *
+     * @param column  The horizontal position from the left, indexed from 0
+     * @param row     The vertical position from the top, indexed from 0
+     */
+    void locate(uint8_t column, uint8_t row);
 
-		/**
-		 * @brief Locate to a screen column and row
-		 *
-		 * @param column  The horizontal position from the left, indexed from 0
-		 * @param row     The vertical position from the top, indexed from 0
-		 */
-		void locate(uint8_t column, uint8_t row);
+    /**
+     * @brief Set cursor position to zero
+     *
+     */
+    void home();
 
-		/**
-		 * @brief Set cursor position to zero
-		 * 
-		 */
-		void home();
+    /**
+     * @brief Set display modes
+     *
+     * @param mode
+     * - DISPLAY_ON Turn the display on
+     * - DISPLAY_OFF Turn the display off
+     * - CURSOR_ON Turns the underline cursor on
+     * - CURSOR_OFF Turns the underline cursor off
+     * - BLINK_ON Turn the blinking cursor on
+     * - BLINK_OFF Turn the blinking cursor off
+     * - SCROLL_LEFT These command scroll the display without changing the RAM
+     * - SCROLL_RIGHT These commands scroll the display without changing the RAM
+     * - LEFT_TO_RIGHT This is for text that flows Left to Right
+     * - RIGHT_TO_LEFT This is for text that flows Right to Left
+     * - AUTOSCROLL_ON This will 'right justify' text from the cursor
+     * - AUTOSCROLL_OFF This will 'left justify' text from the cursor
+     *
+     */
+    void display(modes_t mode);
 
-		/**
-		 * @brief Set display modes
-		 * 
-		 * @param mode 
-		 * - DISPLAY_ON Turn the display on
-		 * - DISPLAY_OFF Turn the display off
-		 * - CURSOR_ON Turns the underline cursor on
-		 * - CURSOR_OFF Turns the underline cursor off
-		 * - BLINK_ON Turn the blinking cursor on
-		 * - BLINK_OFF Turn the blinking cursor off
-		 * - SCROLL_LEFT These command scroll the display without changing the RAM
-		 * - SCROLL_RIGHT These commands scroll the display without changing the RAM
-		 * - LEFT_TO_RIGHT This is for text that flows Left to Right
-		 * - RIGHT_TO_LEFT This is for text that flows Right to Left
-		 * - AUTOSCROLL_ON This will 'right justify' text from the cursor
-		 * - AUTOSCROLL_OFF This will 'left justify' text from the cursor
-		 * 
-		 */
-		void display(modes_t mode);
+    /**
+     * @brief Create a user defined char object
+     * Allows us to fill the first 8 CGRAM locations
+     * with custom characters
+     *
+     * @param location
+     * @param charmap
+     */
+    void create(uint8_t location, uint8_t charmap[]);
 
-		/**
-		 * @brief Create a user defined char object 
-		 * Allows us to fill the first 8 CGRAM locations
-		 * with custom characters
-		 * 
-		 * @param location 
-		 * @param charmap 
-		 */
-		void create(uint8_t location, uint8_t charmap[]);
+    /**
+     * @brief Writes a single char to a given position, usefull for UDC
+     *
+     * @param column
+     * @param row
+     * @param c charachter
+     */
+    void character(uint8_t column, uint8_t row, uint8_t c);
 
-		/**
-		 * @brief Writes a single char to a given position, usefull for UDC
-		 * 
-		 * @param column 
-		 * @param row 
-		 * @param c charachter
-		 */
-		void character(uint8_t column, uint8_t row, uint8_t c);
+protected:
 
-	protected:
+    // Stream implementation functions
+    virtual int _putc(int value);
+    virtual int _getc();
 
-		// Stream implementation functions
-		virtual int _putc(int value);
-		virtual int _getc();
-		
-		uint8_t rows();
-		uint8_t columns();
-		uint8_t address(uint8_t column, uint8_t row);
-		void writeByte(uint8_t value);
-		void writeCommand(uint8_t command);
-		void writeData(uint8_t data);
+    uint8_t rows();
+    uint8_t columns();
+    uint8_t address(uint8_t column, uint8_t row);
+    void writeByte(uint8_t value);
+    void writeCommand(uint8_t command);
+    void writeData(uint8_t data);
 
-		DigitalOut reset, enable;
-		BusOut data;
-		lcd_t type;
+    DigitalOut reset, enable;
+    BusOut data;
+    lcd_t type;
 
-		uint8_t displaycontrol;
-		uint8_t displaymode;
+    uint8_t displaycontrol;
+    uint8_t displaymode;
 
-		uint8_t _column;
-		uint8_t _row;
-	};
+    uint8_t _column;
+    uint8_t _row;
+};
 
 #endif

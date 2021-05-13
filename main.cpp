@@ -107,9 +107,9 @@
 //static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767ZI/Temperature";
 //static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
 
-static constexpr uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 milliseconds.
-static constexpr uint32_t DHT11_DEVICE_STABLE_STATUS_DELAY(1000);   // 1 second.
-static constexpr uint32_t DHT11_DEVICE_SAMPLING_PERIOD(3000);       // 3 seconds.
+static constexpr uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(2000); // 2 seconds.
+static constexpr uint32_t DHT11_DEVICE_STABLE_STATUS_DELAY(1000);      // 1 second.
+static constexpr uint32_t DHT11_DEVICE_SAMPLING_PERIOD(3000);          // 3 seconds.
 
 // DHT11 Sensor Interfacing with ARM MBED. Data communication is single-line
 // serial. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
@@ -328,9 +328,9 @@ void DHT11SensorAcquisition()
 
                 g_LCD16x2.cls();
                 g_LCD16x2.locate(0, 0); // column, row
-                g_LCD16x2.printf("Temp: %f F", f);
+                g_LCD16x2.printf("Temp: %4.2f F", f);
                 g_LCD16x2.locate(0, 1); // column, row
-                g_LCD16x2.printf("Humi: %f %% RH", h);
+                g_LCD16x2.printf("Humi: %4.2f %% RH", h);
 
                 Utility::g_STDIOMutex.lock();
                 printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
