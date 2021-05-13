@@ -18,6 +18,7 @@
             "target.features_add": ["LOWPAN_ROUTER", "COMMON_PAL"],
             "platform.stdio-baud-rate": 9600,
             "platform.stdio-convert-newlines": true,
+            "target.printf_lib": "std",
             "mbed-trace.enable": 1
         }
     }

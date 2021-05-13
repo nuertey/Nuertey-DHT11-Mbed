@@ -84,7 +84,7 @@
 ***********************************************************************/
 #include "mbed.h"
 #include "NuerteyDHT11Device.h"
-#include "TextLCD.h"
+#include "LCD.h"
 #include "Utilities.h"
 #include "waveforms.h"
 //#include "NuerteyMQTTClient.h"
@@ -136,24 +136,6 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // the STM32 Zio connectors, I isolated the following pins as the 
 // Arduino-equivalent pins for the LCD_16x2 library:
 //
-// Connector: CN10 
-// Pin      : 2 
-// Pin Name : D7        * Arduino-equivalent pin name
-// STM32 Pin: PF13
-// Signal   : I/O
-//
-// Connector: CN7 
-// Pin      : 20 
-// Pin Name : D8        * Arduino-equivalent pin name
-// STM32 Pin: PF12
-// Signal   : I/O
-//
-// Connector: CN7 
-// Pin      : 18 
-// Pin Name : D9        * Arduino-equivalent pin name
-// STM32 Pin: PD15
-// Signal   : TIMER_B_PWM2
-//
 // Connector: CN7 
 // Pin      : 16 
 // Pin Name : D10       * Arduino-equivalent pin name
@@ -171,7 +153,26 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // Pin Name : D12       * Arduino-equivalent pin name
 // STM32 Pin: PA6
 // Signal   : SPI_A_MISO 
-TextLCD g_LCD16x2(PF_13, PF_12, PD_15, PD_14, PA_7, PA_6, TextLCD::LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7
+//
+// Connector: CN7 
+// Pin      : 10 
+// Pin Name : D13        * Arduino-equivalent pin name
+// STM32 Pin: PA5
+// Signal   : SPI_A_SCK
+//
+// Connector: CN7 
+// Pin      : 4 
+// Pin Name : D14        * Arduino-equivalent pin name
+// STM32 Pin: PB9
+// Signal   : I2C_A_SDA
+//
+// Connector: CN7 
+// Pin      : 2 
+// Pin Name : D15        * Arduino-equivalent pin name
+// STM32 Pin: PB8
+// Signal   : I2C_A_SCL
+//
+LCD g_LCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
