@@ -87,7 +87,7 @@
 #include "LCD_H.h"
 #include "Utilities.h"
 #include "waveforms.h"
-#include "NuerteyMQTTClient.h"
+//#include "NuerteyMQTTClient.h"
 
 #define LED_ON  1
 #define LED_OFF 0
@@ -97,15 +97,15 @@
 //static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
 
 // MQTT Broker IP on local LAN gives better results than outward-facing IP. 
-static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
-static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
+//static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
 
 // As we are constrained on embedded, prefer to send many topics with
 // smaller payloads than one topic with a giant payload. This will also
 // ensure that we do not run into hard limits such as the 512 string
 // literal byte limit after concatenation (509 + terminators).
-static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767ZI/Temperature";
-static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
+//static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767ZI/Temperature";
+//static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
 
 static constexpr uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(3); // 3 milliseconds.
 static constexpr uint32_t DHT11_DEVICE_STABLE_STATUS_DELAY(1000);   // 1 second.
@@ -271,9 +271,9 @@ struct ExternalLED_t
 
 void DHT11SensorAcquisition()
 {
-    NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
-                                    NUERTEY_MQTT_BROKER_ADDRESS,
-                                    NUERTEY_MQTT_BROKER_PORT);
+//    NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
+//                                    NUERTEY_MQTT_BROKER_ADDRESS,
+//                                    NUERTEY_MQTT_BROKER_PORT);
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
@@ -287,7 +287,8 @@ void DHT11SensorAcquisition()
 
     // Indicate with the blue LED that MQTT network initialization is ongoing.
     g_LEDBlue = LED_ON;
-    bool retVal = theMQTTClient.Connect();
+//    bool retVal = theMQTTClient.Connect();
+    bool retVal = true;
 
     if (retVal)
     {
@@ -298,8 +299,8 @@ void DHT11SensorAcquisition()
         // That design pattern is mandated by the embedded MQTT library to
         // facilitate context switching. Hence subscribe to every topic you
         // aim to publish.
-        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+        //theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        //theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
         g_LEDBlue = LED_OFF;
 
         ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
@@ -327,8 +328,8 @@ void DHT11SensorAcquisition()
                 g_LCD16x2.clr();
                 g_LCD16x2.setCursor(0, 0);
                 g_LCD16x2.wtrString("Temp: ");
-                g_LCD16x2.wtrNumber(c);
-                g_LCD16x2.wtrString(" C");
+                g_LCD16x2.wtrNumber(f);
+                g_LCD16x2.wtrString(" F");
                 g_LCD16x2.setCursor(1, 0);
                 g_LCD16x2.wtrString("Humi: ");
                 g_LCD16x2.wtrNumber(h);
@@ -342,16 +343,16 @@ void DHT11SensorAcquisition()
                 // Indicate that publishing is about to commence with the blue LED.
                 g_LEDBlue = LED_ON;
                 
-                std::string sensorTemperature = std::to_string(c);
-                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
-                                       (void *)sensorTemperature.c_str(), 
-                                       sensorTemperature.size() + 1);  
-
-                std::string sensorHumidity = std::to_string(h);
-                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
-                                       (void *)sensorHumidity.c_str(), 
-                                       sensorHumidity.size() + 1);  
-                
+//                std::string sensorTemperature = std::to_string(c);
+//                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
+//                                       (void *)sensorTemperature.c_str(), 
+//                                       sensorTemperature.size() + 1);  
+//
+//                std::string sensorHumidity = std::to_string(h);
+//                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
+//                                       (void *)sensorHumidity.c_str(), 
+//                                       sensorHumidity.size() + 1);  
+//                
                 // Indicate that publishing was successful and a message was 
                 // received in response by turning off the blue LED.
                 g_LEDBlue = LED_OFF; 
@@ -363,7 +364,7 @@ void DHT11SensorAcquisition()
 
                 g_LCD16x2.clr();
                 g_LCD16x2.setCursor(0, 0);
-                g_LCD16x2.wtrString("Error!");
+                g_LCD16x2.wtrString("Sensor Error!");
 
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
@@ -381,11 +382,11 @@ void DHT11SensorAcquisition()
         // Indicate with the blue LED that MQTT network de-initialization is ongoing.
         g_LEDBlue = LED_ON;
 
-        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+//        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+//        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
 
         // Bring down the MQTT session.
-        theMQTTClient.Disconnect();
+//        theMQTTClient.Disconnect();
         
         g_LEDBlue = LED_OFF;
     }
@@ -471,12 +472,12 @@ int main()
 {
     printf("\r\n\r\nNuertey-DHT11-Mbed - Beginning... \r\n\r\n");
 
-    Utility::InitializeGlobalResources();
-
-    printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
-    printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
-    printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
-    printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
+//    Utility::InitializeGlobalResources();
+//
+//    printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
+//    printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
+//    printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
+//    printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
 
     // Spawns three threads so as to blink the three large (10mm) externally
     // connected LEDs at various frequencies. Note to connect said LEDs
@@ -533,7 +534,7 @@ int main()
     //g_External10mmLEDThread4.join();
     //g_External10mmLEDThread5.join();
 
-    Utility::ReleaseGlobalResources();
+//    Utility::ReleaseGlobalResources();
 
     printf("\r\n\r\nNuertey-DHT11-Mbed Application - Done.\r\n\r\n");
 }
