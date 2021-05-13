@@ -84,7 +84,7 @@
 ***********************************************************************/
 #include "mbed.h"
 #include "NuerteyDHT11Device.h"
-#include "LCD_H.h"
+#include "TextLCD.h"
 #include "Utilities.h"
 #include "waveforms.h"
 //#include "NuerteyMQTTClient.h"
@@ -136,6 +136,18 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // the STM32 Zio connectors, I isolated the following pins as the 
 // Arduino-equivalent pins for the LCD_16x2 library:
 //
+// Connector: CN10 
+// Pin      : 2 
+// Pin Name : D7        * Arduino-equivalent pin name
+// STM32 Pin: PF13
+// Signal   : I/O
+//
+// Connector: CN7 
+// Pin      : 20 
+// Pin Name : D8        * Arduino-equivalent pin name
+// STM32 Pin: PF12
+// Signal   : I/O
+//
 // Connector: CN7 
 // Pin      : 18 
 // Pin Name : D9        * Arduino-equivalent pin name
@@ -159,19 +171,7 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // Pin Name : D12       * Arduino-equivalent pin name
 // STM32 Pin: PA6
 // Signal   : SPI_A_MISO 
-//
-// Connector: CN10 
-// Pin      : 2 
-// Pin Name : D7        * Arduino-equivalent pin name
-// STM32 Pin: PF13
-// Signal   : I/O
-//
-// Connector: CN7 
-// Pin      : 20 
-// Pin Name : D8        * Arduino-equivalent pin name
-// STM32 Pin: PF12
-// Signal   : I/O
-LCD g_LCD16x2(PD_15, PD_14, PA_7, PA_6, PF_13, PF_12); // LCD designated pins: D4, D5, D6, D7, RS, E
+TextLCD g_LCD16x2(PF_13, PF_12, PD_15, PD_14, PA_7, PA_6, TextLCD::LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7
           
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
@@ -277,11 +277,11 @@ void DHT11SensorAcquisition()
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
-    g_LCD16x2.clr();
-    g_LCD16x2.setCursor(0, 0);
-    g_LCD16x2.wtrString("NUERTEY ODZEYEM");
-    g_LCD16x2.setCursor(1, 0);
-    g_LCD16x2.wtrString("NUCLEO-F767ZI");
+    g_LCD16x2.cls();
+    g_LCD16x2.locate(0, 0); // column, row
+    g_LCD16x2.printf("NUERTEY ODZEYEM\n");
+    g_LCD16x2.locate(0, 1); // column, row
+    g_LCD16x2.printf("NUCLEO-F767ZI\n");
     ThisThread::sleep_for(DHT11_DEVICE_USER_OBSERVABILITY_DELAY);
     g_LEDGreen = LED_OFF;
 
@@ -325,15 +325,11 @@ void DHT11SensorAcquisition()
                 dp  = g_DHT11.CalculateDewPoint(c, h);
                 dpf = g_DHT11.CalculateDewPointFast(c, h);
 
-                g_LCD16x2.clr();
-                g_LCD16x2.setCursor(0, 0);
-                g_LCD16x2.wtrString("Temp: ");
-                g_LCD16x2.wtrNumber(f);
-                g_LCD16x2.wtrString(" F");
-                g_LCD16x2.setCursor(1, 0);
-                g_LCD16x2.wtrString("Humi: ");
-                g_LCD16x2.wtrNumber(h);
-                g_LCD16x2.wtrString(" % RH");
+                g_LCD16x2.cls();
+                g_LCD16x2.locate(0, 0); // column, row
+                g_LCD16x2.printf("Temp: %f F", f);
+                g_LCD16x2.locate(0, 1); // column, row
+                g_LCD16x2.printf("Humi: %f %% RH", h);
 
                 Utility::g_STDIOMutex.lock();
                 printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
@@ -362,9 +358,8 @@ void DHT11SensorAcquisition()
                 // Indicate with the red LED that an error occurred.
                 g_LEDRed = LED_ON;
 
-                g_LCD16x2.clr();
-                g_LCD16x2.setCursor(0, 0);
-                g_LCD16x2.wtrString("Sensor Error!");
+                g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
+                g_LCD16x2.printf("Error Reading Sensor!"); // TBD, does it wraparound?
 
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
