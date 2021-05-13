@@ -446,7 +446,7 @@ namespace Utility
     // Be careful about designating the return here as const. It will
     // trap you in some sneaky behavior as a move from the std::optional
     // will rather invoke the copy constructor without the compiler complaining.
-    auto ResolveAddressIfDomainName = [](const std::string & address)
+    const auto ResolveAddressIfDomainName = [](const std::string & address)
     {
         std::optional<std::string> domainName(std::nullopt);
         std::string ipAddress = address;
@@ -475,7 +475,7 @@ namespace Utility
             }
         }
 
-        return std::make_pair(ipAddress, domainName);
+        return std::make_pair(std::move(ipAddress), std::move(domainName));
     };
 
     template <typename T>
