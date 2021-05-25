@@ -15,10 +15,10 @@ triangular and sinusoidal waveform function values. Essentially,
 the values of said waveforms are scaled and used as the duty cycle
 in driving, dimming, and brightening the 10mm LEDs.
 
-[alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_5.jpeg?raw=true)
-[alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_2.jpeg?raw=true)
-[alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_4.jpeg?raw=true)
-[alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_6.jpeg?raw=true)
+![alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_5.jpeg?raw=true)
+![alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_2.jpeg?raw=true)
+![alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_4.jpeg?raw=true)
+![alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_project_6.jpeg?raw=true)
 
 ## License
 MIT License
