@@ -87,7 +87,7 @@
 #include "LCD.h"
 #include "Utilities.h"
 #include "waveforms.h"
-//#include "NuerteyMQTTClient.h"
+#include "NuerteyMQTTClient.h"
 
 #define LED_ON  1
 #define LED_OFF 0
@@ -97,15 +97,15 @@
 //static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
 
 // MQTT Broker IP on local LAN gives better results than outward-facing IP. 
-//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
-//static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
+static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
+static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
 
 // As we are constrained on embedded, prefer to send many topics with
 // smaller payloads than one topic with a giant payload. This will also
 // ensure that we do not run into hard limits such as the 512 string
 // literal byte limit after concatenation (509 + terminators).
-//static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767ZI/Temperature";
-//static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
+static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1 = "/Nuertey/Nucleo/F767ZI/Temperature";
+static const char * NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2 = "/Nuertey/Nucleo/F767ZI/Humidity";
 
 static constexpr uint32_t DHT11_DEVICE_USER_OBSERVABILITY_DELAY(2000); // 2 seconds.
 static constexpr uint32_t DHT11_DEVICE_STABLE_STATUS_DELAY(1000);      // 1 second.
@@ -241,6 +241,7 @@ Thread            g_External10mmLEDThread2;
 Thread            g_External10mmLEDThread3;
 Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
+Thread            g_External10mmLEDThread6;
 
 // =============================
 // Begin Actual Implementations:
@@ -272,9 +273,9 @@ struct ExternalLED_t
 
 void DHT11SensorAcquisition()
 {
-//    NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
-//                                    NUERTEY_MQTT_BROKER_ADDRESS,
-//                                    NUERTEY_MQTT_BROKER_PORT);
+    NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
+                                    NUERTEY_MQTT_BROKER_ADDRESS,
+                                    NUERTEY_MQTT_BROKER_PORT);
 
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
@@ -288,7 +289,7 @@ void DHT11SensorAcquisition()
 
     // Indicate with the blue LED that MQTT network initialization is ongoing.
     g_LEDBlue = LED_ON;
-//    bool retVal = theMQTTClient.Connect();
+    bool retVal = theMQTTClient.Connect();
     bool retVal = true;
 
     if (retVal)
@@ -300,8 +301,8 @@ void DHT11SensorAcquisition()
         // That design pattern is mandated by the embedded MQTT library to
         // facilitate context switching. Hence subscribe to every topic you
         // aim to publish.
-        //theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        //theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
         g_LEDBlue = LED_OFF;
 
         ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
@@ -340,16 +341,16 @@ void DHT11SensorAcquisition()
                 // Indicate that publishing is about to commence with the blue LED.
                 g_LEDBlue = LED_ON;
                 
-//                std::string sensorTemperature = std::to_string(c);
-//                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
-//                                       (void *)sensorTemperature.c_str(), 
-//                                       sensorTemperature.size() + 1);  
-//
-//                std::string sensorHumidity = std::to_string(h);
-//                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
-//                                       (void *)sensorHumidity.c_str(), 
-//                                       sensorHumidity.size() + 1);  
-//                
+                std::string sensorTemperature = std::to_string(c);
+                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
+                                       (void *)sensorTemperature.c_str(), 
+                                       sensorTemperature.size() + 1);  
+
+                std::string sensorHumidity = std::to_string(h);
+                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
+                                       (void *)sensorHumidity.c_str(), 
+                                       sensorHumidity.size() + 1);  
+                
                 // Indicate that publishing was successful and a message was 
                 // received in response by turning off the blue LED.
                 g_LEDBlue = LED_OFF; 
@@ -369,7 +370,7 @@ void DHT11SensorAcquisition()
             }
 
             g_LEDGreen = LED_OFF;
-            // Per datasheet/device specifications:
+            // Per device datasheet specifications:
             //
             // "Sampling period：Secondary Greater than 2 seconds"
             ThisThread::sleep_for(DHT11_DEVICE_SAMPLING_PERIOD);
@@ -378,11 +379,11 @@ void DHT11SensorAcquisition()
         // Indicate with the blue LED that MQTT network de-initialization is ongoing.
         g_LEDBlue = LED_ON;
 
-//        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-//        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
 
         // Bring down the MQTT session.
-//        theMQTTClient.Disconnect();
+        theMQTTClient.Disconnect();
         
         g_LEDBlue = LED_OFF;
     }
@@ -394,7 +395,7 @@ void DHT11SensorAcquisition()
 
 void LEDBlinker(ExternalLED_t * pExternalLED)
 {
-    while (true) 
+    while (1) 
     {
         *(pExternalLED->m_pExternalLEDPin) = LED_ON;
         ThisThread::sleep_for(pExternalLED->m_TimeOn);
@@ -429,36 +430,42 @@ void LEDSawToothWave(PwmOut * pExternalLEDPin)
 void LEDTriangularWave(PwmOut * pExternalLEDPin)
 {
     auto result = std::max_element(g_TriangleWaveform, g_TriangleWaveform + NUMBER_OF_TRIANGULAR_SAMPLES);
-    for (auto & dutyCycle : g_TriangleWaveform) 
+    while (1)
     {
-        // Set the output duty-cycle, specified as a percentage (float)
-        //
-        // Parameters
-        //    value A floating-point value representing the output duty-cycle, 
-        //    specified as a percentage. The value should lie between 0.0f 
-        //    (representing on 0%) and 1.0f (representing on 100%). Values 
-        //    outside this range will be saturated to 0.0f or 1.0f.
-        float scaledDutyCycle = (dutyCycle/(*result));
-        *pExternalLEDPin = scaledDutyCycle;
-        ThisThread::sleep_for(200);
+        for (auto & dutyCycle : g_TriangleWaveform) 
+        {
+            // Set the output duty-cycle, specified as a percentage (float)
+            //
+            // Parameters
+            //    value A floating-point value representing the output duty-cycle, 
+            //    specified as a percentage. The value should lie between 0.0f 
+            //    (representing on 0%) and 1.0f (representing on 100%). Values 
+            //    outside this range will be saturated to 0.0f or 1.0f.
+            float scaledDutyCycle = (dutyCycle/(*result));
+            *pExternalLEDPin = scaledDutyCycle;
+            ThisThread::sleep_for(200);
+        }
     }
 }
 
 void LEDSinusoidalWave(PwmOut * pExternalLEDPin)
 {
     auto result = std::max_element(g_SineWaveform, g_SineWaveform + NUMBER_OF_SINUSOID_SAMPLES);
-    for (auto & dutyCycle : g_SineWaveform) 
+    while (1)
     {
-        // Set the output duty-cycle, specified as a percentage (float)
-        //
-        // Parameters
-        //    value A floating-point value representing the output duty-cycle, 
-        //    specified as a percentage. The value should lie between 0.0f 
-        //    (representing on 0%) and 1.0f (representing on 100%). Values 
-        //    outside this range will be saturated to 0.0f or 1.0f.
-        float scaledDutyCycle = (dutyCycle/(*result));
-        *pExternalLEDPin = scaledDutyCycle;
-        ThisThread::sleep_for(40);
+        for (auto & dutyCycle : g_SineWaveform) 
+        {
+            // Set the output duty-cycle, specified as a percentage (float)
+            //
+            // Parameters
+            //    value A floating-point value representing the output duty-cycle, 
+            //    specified as a percentage. The value should lie between 0.0f 
+            //    (representing on 0%) and 1.0f (representing on 100%). Values 
+            //    outside this range will be saturated to 0.0f or 1.0f.
+            float scaledDutyCycle = (dutyCycle/(*result));
+            *pExternalLEDPin = scaledDutyCycle;
+            ThisThread::sleep_for(40);
+        }
     }
 }
 
@@ -468,12 +475,12 @@ int main()
 {
     printf("\r\n\r\nNuertey-DHT11-Mbed - Beginning... \r\n\r\n");
 
-//    Utility::InitializeGlobalResources();
-//
-//    printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
-//    printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
-//    printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
-//    printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
+    Utility::InitializeGlobalResources();
+
+    printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
+    printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
+    printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
+    printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
 
     // Spawns three threads so as to blink the three large (10mm) externally
     // connected LEDs at various frequencies. Note to connect said LEDs
@@ -483,21 +490,17 @@ int main()
 
     // It seems that Mbed Callback class can only take in one argument.
     // Not to worry, we will improvise with an aggregate class type.
-    //ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
-    //ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
-    //ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
+    ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
+    ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
+    ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
-    //g_External10mmLEDThread1.start(callback(LEDBlinker, &external10mmLEDGreen));
-    //g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
-    //g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
-    //g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
+    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
+    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
+    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
 
-    // Forget not proper thread joins:
-    //g_External10mmLEDThread2.join();
-    //g_External10mmLEDThread3.join();
-
-    //g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
-    //g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
+    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
+    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
+    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
 
     Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
                                        CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
@@ -526,11 +529,14 @@ int main()
     Utility::gs_CloudCommunicationsEventIdentifier = 0;
 
     // Forget not proper thread joins:
-    //g_External10mmLEDThread1.join();
-    //g_External10mmLEDThread4.join();
-    //g_External10mmLEDThread5.join();
+    g_External10mmLEDThread1.join();
+    g_External10mmLEDThread2.join();
+    g_External10mmLEDThread3.join();
+    g_External10mmLEDThread4.join();
+    g_External10mmLEDThread5.join();
+    g_External10mmLEDThread6.join();
 
-//    Utility::ReleaseGlobalResources();
+    Utility::ReleaseGlobalResources();
 
     printf("\r\n\r\nNuertey-DHT11-Mbed Application - Done.\r\n\r\n");
 }
