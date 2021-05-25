@@ -494,13 +494,13 @@ int main()
     ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
     ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
-    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
-    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
-    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
-
-    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
-    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
-    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
+//    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
+//    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
+//    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
+//
+//    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
+//    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
+//    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
 
     Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
                                        CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
@@ -529,12 +529,12 @@ int main()
     Utility::gs_CloudCommunicationsEventIdentifier = 0;
 
     // Forget not proper thread joins:
-    g_External10mmLEDThread1.join();
-    g_External10mmLEDThread2.join();
-    g_External10mmLEDThread3.join();
-    g_External10mmLEDThread4.join();
-    g_External10mmLEDThread5.join();
-    g_External10mmLEDThread6.join();
+//    g_External10mmLEDThread1.join();
+//    g_External10mmLEDThread2.join();
+//    g_External10mmLEDThread3.join();
+//    g_External10mmLEDThread4.join();
+//    g_External10mmLEDThread5.join();
+//    g_External10mmLEDThread6.join();
 
     Utility::ReleaseGlobalResources();
 
