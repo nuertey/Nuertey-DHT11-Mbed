@@ -290,7 +290,6 @@ void DHT11SensorAcquisition()
     // Indicate with the blue LED that MQTT network initialization is ongoing.
     g_LEDBlue = LED_ON;
     bool retVal = theMQTTClient.Connect();
-    bool retVal = true;
 
     if (retVal)
     {
