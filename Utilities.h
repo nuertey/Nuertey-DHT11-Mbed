@@ -288,7 +288,7 @@ namespace Utility
 
     void NetworkStatusCallback(nsapi_event_t status, intptr_t param);
     void NetworkDisconnectQuery();
-    void InitializeGlobalResources();
+    bool InitializeGlobalResources();
     void ReleaseGlobalResources();
     //void PrintMemoryInfo();
 
@@ -384,6 +384,16 @@ namespace Utility
     {
         // Cast before negating x to avoid overflow.
         return x < 0? -static_cast<decltype(abs(x))>(x) : x;
+    }
+
+    template <typename T>
+    const auto TruncateAndToString(const T& x, const int& decimalDigits)
+    {
+        std::stringstream ss;
+        ss << std::fixed;
+        ss.precision(decimalDigits); // set # places after decimal
+        ss << x;
+        return ss.str();
     }
 
     template <typename E>

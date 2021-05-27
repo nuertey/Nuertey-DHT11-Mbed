@@ -277,6 +277,8 @@ void DHT11SensorAcquisition()
                                     NUERTEY_MQTT_BROKER_ADDRESS,
                                     NUERTEY_MQTT_BROKER_PORT);
 
+    ThisThread::sleep_for(DHT11_DEVICE_USER_OBSERVABILITY_DELAY);
+    
     // Indicate with the green LED that DHT11 processing is about to begin.
     g_LEDGreen = LED_ON;
     g_LCD16x2.cls();
@@ -323,8 +325,8 @@ void DHT11SensorAcquisition()
                 f   = g_DHT11.GetTemperature(TemperatureScale_t::FARENHEIT);
                 k   = g_DHT11.GetTemperature(TemperatureScale_t::KELVIN);
                 h   = g_DHT11.GetHumidity();
-                dp  = g_DHT11.CalculateDewPoint(c, h);
-                dpf = g_DHT11.CalculateDewPointFast(c, h);
+                dp  = g_DHT11.CalculateDewPoint(f, h);
+                dpf = g_DHT11.CalculateDewPointFast(f, h);
 
                 g_LCD16x2.cls();
                 g_LCD16x2.locate(0, 0); // column, row
@@ -340,15 +342,15 @@ void DHT11SensorAcquisition()
                 // Indicate that publishing is about to commence with the blue LED.
                 g_LEDBlue = LED_ON;
                 
-                std::string sensorTemperature = std::to_string(c);
+                std::string sensorTemperature = Utility::TruncateAndToString<float>(f, 2);
                 theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
                                        (void *)sensorTemperature.c_str(), 
-                                       sensorTemperature.size() + 1);  
+                                       sensorTemperature.size());  
 
-                std::string sensorHumidity = std::to_string(h);
+                std::string sensorHumidity = Utility::TruncateAndToString<float>(h, 2);
                 theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
                                        (void *)sensorHumidity.c_str(), 
-                                       sensorHumidity.size() + 1);  
+                                       sensorHumidity.size());  
                 
                 // Indicate that publishing was successful and a message was 
                 // received in response by turning off the blue LED.
@@ -474,68 +476,73 @@ int main()
 {
     printf("\r\n\r\nNuertey-DHT11-Mbed - Beginning... \r\n\r\n");
 
-    Utility::InitializeGlobalResources();
-
-    printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
-    printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
-    printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
-    printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
-
-    // Spawns three threads so as to blink the three large (10mm) externally
-    // connected LEDs at various frequencies. Note to connect said LEDs
-    // in series with an appropriate resistor (60 - 100 ohms?) as the 
-    // I/Os of STM32 NUCLEO-F767ZI are only 3.3 V compatible ... whereas 
-    // the LEDs are high-powered (5V)? Forward voltage? Forward operating current?
-
-    // It seems that Mbed Callback class can only take in one argument.
-    // Not to worry, we will improvise with an aggregate class type.
-    ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
-    ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
-    ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
-
-//    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
-//    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
-//    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
-//
-//    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
-//    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
-//    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
-
-    Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
-                                       CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
-                                       DHT11SensorAcquisition);
-    if (!Utility::gs_CloudCommunicationsEventIdentifier)
+    if (Utility::InitializeGlobalResources())
     {
-        printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
+        printf("\r\n%s\r\n", Utility::g_NetworkInterfaceInfo.c_str());
+        printf("\r\n%s\r\n", Utility::g_SystemProfile.c_str());
+        printf("\r\n%s\r\n", Utility::g_BaseRegisterValues.c_str());
+        printf("\r\n%s\r\n", Utility::g_HeapStatistics.c_str());
+
+        // Spawns three threads so as to blink the three large (10mm) externally
+        // connected LEDs at various frequencies. Note to connect said LEDs
+        // in series with an appropriate resistor (60 - 100 ohms?) as the 
+        // I/Os of STM32 NUCLEO-F767ZI are only 3.3 V compatible ... whereas 
+        // the LEDs are high-powered (5V)? Forward voltage? Forward operating current?
+
+        // It seems that Mbed Callback class can only take in one argument.
+        // Not to worry, we will improvise with an aggregate class type.
+        ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
+        ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
+        ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
+
+    //    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
+    //    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
+    //    g_External10mmLEDThread3.start(callback(LEDSinusoidalWave, &g_ExternalPWMLEDRed));
+    //
+    //    g_External10mmLEDThread4.start(callback(LEDBlinker, &external10mmLEDYellow));
+    //    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
+    //    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
+
+        Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
+                                           CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
+                                           DHT11SensorAcquisition);
+        if (!Utility::gs_CloudCommunicationsEventIdentifier)
+        {
+            printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
+        }
+        
+        // To further save RAM, as we have no other work to do in main() after
+        // initialization, we will dispatch the global event queue from here,
+        // thus avoiding the need to create a separate dispatch thread (context).
+        
+        // The dispatch function provides the context for running
+        // of the queue and can take a millisecond timeout to run for a
+        // fixed time or to just dispatch any pending events.
+        printf("\r\nAbout to dispatch regular and periodic events... \r\n");
+        Utility::gs_MasterEventQueue.dispatch_forever();
+        
+        Utility::g_STDIOMutex.lock();
+        printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
+        Utility::g_STDIOMutex.unlock();
+        
+        // As we are done dispatching, reset the event id so that potential
+        // callbacks do not attempt to perform actions on the Master Event Queue.
+        Utility::gs_CloudCommunicationsEventIdentifier = 0;
+
+        // Forget not proper thread joins:
+    //    g_External10mmLEDThread1.join();
+    //    g_External10mmLEDThread2.join();
+    //    g_External10mmLEDThread3.join();
+    //    g_External10mmLEDThread4.join();
+    //    g_External10mmLEDThread5.join();
+    //    g_External10mmLEDThread6.join();
+
+        Utility::ReleaseGlobalResources();
     }
-    
-    // To further save RAM, as we have no other work to do in main() after
-    // initialization, we will dispatch the global event queue from here,
-    // thus avoiding the need to create a separate dispatch thread (context).
-    
-    // The dispatch function provides the context for running
-    // of the queue and can take a millisecond timeout to run for a
-    // fixed time or to just dispatch any pending events.
-    printf("\r\nAbout to dispatch regular and periodic events... \r\n");
-    Utility::gs_MasterEventQueue.dispatch_forever();
-    
-    Utility::g_STDIOMutex.lock();
-    printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
-    Utility::g_STDIOMutex.unlock();
-    
-    // As we are done dispatching, reset the event id so that potential
-    // callbacks do not attempt to perform actions on the Master Event Queue.
-    Utility::gs_CloudCommunicationsEventIdentifier = 0;
+    else
+    {
+        printf("\r\n\r\nError! Initialization of Global Resources Failed!\n");
+    }
 
-    // Forget not proper thread joins:
-//    g_External10mmLEDThread1.join();
-//    g_External10mmLEDThread2.join();
-//    g_External10mmLEDThread3.join();
-//    g_External10mmLEDThread4.join();
-//    g_External10mmLEDThread5.join();
-//    g_External10mmLEDThread6.join();
-
-    Utility::ReleaseGlobalResources();
-
-    printf("\r\n\r\nNuertey-DHT11-Mbed Application - Done.\r\n\r\n");
+    printf("\r\n\r\nNuertey-DHT11-Mbed Application - Exiting.\r\n\r\n");
 }

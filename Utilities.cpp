@@ -119,7 +119,7 @@ namespace Utility
     }
 
     // To prevent order of initialization defects.
-    void InitializeGlobalResources()
+    bool InitializeGlobalResources()
     {
         // Defensive programming; start from a clean slate.
         g_pMessage.reset();
@@ -131,7 +131,7 @@ namespace Utility
         if (!g_pNetworkInterface)
         {
             printf("FATAL! No network interface found.\n");
-            return;
+            return false;
         }
 
         // Asynchronously monitor for Network Status events.
@@ -142,6 +142,7 @@ namespace Utility
         if (status < NSAPI_ERROR_OK)
         {
             printf("\r\n\r\nError! g_EthernetInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
+            return false;
         }
         else
         {
@@ -150,6 +151,7 @@ namespace Utility
             //set_time(now);
             g_NTPClient.SynchronizeRTCTimestamp();
             std::tie(g_NetworkInterfaceInfo, g_SystemProfile, g_BaseRegisterValues, g_HeapStatistics) = ComposeSystemStatistics();
+            return true;
         }
     }
 
