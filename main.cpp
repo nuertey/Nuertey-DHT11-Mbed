@@ -92,6 +92,51 @@
 #define LED_ON  1
 #define LED_OFF 0
 
+// Special chars meant to show the capabilities of the LCD 16x2 display.
+uint8_t upArrow[8] =
+{
+    0b00100,
+    0b01010,
+    0b10001,
+    0b00100,
+    0b00100,
+    0b00100,
+    0b00000,
+};
+
+uint8_t downArrow[8] =
+{
+    0b00000,
+    0b00100,
+    0b00100,
+    0b00100,
+    0b10001,
+    0b01010,
+    0b00100,
+};
+
+uint8_t rightArrow[8] =
+{
+    0b00000,
+    0b00100,
+    0b00010,
+    0b11001,
+    0b00010,
+    0b00100,
+    0b00000,
+};
+
+uint8_t leftArrow[8] =
+{
+    0b00000,
+    0b00100,
+    0b01000,
+    0b10011,
+    0b01000,
+    0b00100,
+    0b00000,
+};
+
 // Laptop running Mosquitto MQTT Broker/Server hosted on Ubuntu Linux
 // outward-facing IP address. Port is particular to the MQTT protocol.
 //static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
@@ -173,7 +218,7 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // Signal   : I2C_A_SCL
 //
 LCD g_LCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
-          
+        
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
 DigitalOut        g_LEDBlue(LED2);
@@ -271,23 +316,78 @@ struct ExternalLED_t
     uint32_t       m_TimeOff;
 };
 
+void DisplayLCDCapabilities()
+{
+    g_LCD16x2.create(0, downArrow);
+    g_LCD16x2.create(1, upArrow);
+    g_LCD16x2.create(2, rightArrow);
+    g_LCD16x2.create(3, leftArrow);
+
+    g_LCD16x2.cls();
+    g_LCD16x2.locate(0, 0);
+    g_LCD16x2.printf("NUERTEY ODZEYEM\n");
+    g_LCD16x2.character(0, 1, 0);
+    g_LCD16x2.character(3, 1, 1);
+    g_LCD16x2.character(5, 1, 2);
+    g_LCD16x2.character(7, 1, 3);
+
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.cls();
+    g_LCD16x2.locate(0, 0);
+    g_LCD16x2.printf("NUCLEO-F767ZI\n");
+
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.display(DISPLAY_OFF);
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.display(DISPLAY_ON);
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.display(CURSOR_ON);
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.display(BLINK_ON);
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.display(BLINK_OFF);
+    ThisThread::sleep_for(2000);
+    g_LCD16x2.display(CURSOR_OFF);
+
+    for (uint8_t nuert = 0; nuert < 3; nuert++)
+    {
+        for (uint8_t pos = 0; pos < 13; pos++)
+        {
+            // scroll one position to left
+            g_LCD16x2.display(SCROLL_LEFT);
+            // step time
+            ThisThread::sleep_for(500);
+        }
+
+        // scroll 29 positions (string length + display length) to the right
+        // to move it offscreen right
+        for (uint8_t pos = 0; pos < 29; pos++)
+        {
+            // scroll one position to right
+            g_LCD16x2.display(SCROLL_RIGHT);
+            // step time
+            ThisThread::sleep_for(500);
+        }
+
+        // scroll 16 positions (display length + string length) to the left
+        // to move it back to center
+        for (uint8_t pos = 0; pos < 16; pos++)
+        {
+            // scroll one position to left
+            g_LCD16x2.display(SCROLL_LEFT);
+            // step time
+            ThisThread::sleep_for(500);
+        }
+
+        ThisThread::sleep_for(1000);
+    }
+}
+
 void DHT11SensorAcquisition()
 {
     NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
                                     NUERTEY_MQTT_BROKER_ADDRESS,
                                     NUERTEY_MQTT_BROKER_PORT);
-
-    ThisThread::sleep_for(DHT11_DEVICE_USER_OBSERVABILITY_DELAY);
-    
-    // Indicate with the green LED that DHT11 processing is about to begin.
-    g_LEDGreen = LED_ON;
-    g_LCD16x2.cls();
-    g_LCD16x2.locate(0, 0); // column, row
-    g_LCD16x2.printf("NUERTEY ODZEYEM\n");
-    g_LCD16x2.locate(0, 1); // column, row
-    g_LCD16x2.printf("NUCLEO-F767ZI\n");
-    ThisThread::sleep_for(DHT11_DEVICE_USER_OBSERVABILITY_DELAY);
-    g_LEDGreen = LED_OFF;
 
     // Indicate with the blue LED that MQTT network initialization is ongoing.
     g_LEDBlue = LED_ON;
@@ -306,7 +406,7 @@ void DHT11SensorAcquisition()
         theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
         g_LEDBlue = LED_OFF;
 
-        ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
+        //ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
 
         while (1)
         {
@@ -342,6 +442,12 @@ void DHT11SensorAcquisition()
                 // Indicate that publishing is about to commence with the blue LED.
                 g_LEDBlue = LED_ON;
                 
+                // CAUTION: Per the Paho MQTT library's behavior, the 3rd size parameter to Publish()
+                // must match the 2nd c_str parameter exactly!, not more nor less, for the peer receiving
+                // side to be able to decode the MQTT payload successfully. If, for example, one attempts
+                // to over-compensate by, say, increasing size by 1 in order to account for some aberrant 
+                // null-termination, the received MQTT payload would have an extra "\x00" at the tail-end,
+                // which would cause the payload decoding by the peer to fail (at least on Python 3.7). 
                 std::string sensorTemperature = Utility::TruncateAndToString<float>(f, 2);
                 theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
                                        (void *)sensorTemperature.c_str(), 
@@ -475,6 +581,8 @@ void LEDSinusoidalWave(PwmOut * pExternalLEDPin)
 int main()
 {
     printf("\r\n\r\nNuertey-DHT11-Mbed - Beginning... \r\n\r\n");
+
+    DisplayLCDCapabilities();
 
     if (Utility::InitializeGlobalResources())
     {
