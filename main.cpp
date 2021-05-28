@@ -333,56 +333,56 @@ void DisplayLCDCapabilities()
     g_LCD16x2.character(5, 1, 2);
     g_LCD16x2.character(7, 1, 3);
 
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.cls();
-    g_LCD16x2.locate(0, 0);
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.cls();
+    g_LCD16x2.locate(0, 1);
     g_LCD16x2.printf("NUERTEY ODZEYEM\n");
 
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.display(DISPLAY_OFF);
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.display(DISPLAY_ON);
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.display(CURSOR_ON);
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.display(BLINK_ON);
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.display(BLINK_OFF);
-    ThisThread::sleep_for(2000);
-    g_LCD16x2.display(CURSOR_OFF);
-
-    for (uint8_t nuert = 0; nuert < 1; nuert++)
-    {
-        for (uint8_t pos = 0; pos < 13; pos++)
-        {
-            // scroll one position to left
-            g_LCD16x2.display(SCROLL_LEFT);
-            // step time
-            ThisThread::sleep_for(500);
-        }
-
-        // scroll 29 positions (string length + display length) to the right
-        // to move it offscreen right
-        for (uint8_t pos = 0; pos < 29; pos++)
-        {
-            // scroll one position to right
-            g_LCD16x2.display(SCROLL_RIGHT);
-            // step time
-            ThisThread::sleep_for(500);
-        }
-
-        // scroll 16 positions (display length + string length) to the left
-        // to move it back to center
-        for (uint8_t pos = 0; pos < 16; pos++)
-        {
-            // scroll one position to left
-            g_LCD16x2.display(SCROLL_LEFT);
-            // step time
-            ThisThread::sleep_for(500);
-        }
-
-        ThisThread::sleep_for(1000);
-    }
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.display(DISPLAY_OFF);
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.display(DISPLAY_ON);
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.display(CURSOR_ON);
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.display(BLINK_ON);
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.display(BLINK_OFF);
+    //ThisThread::sleep_for(2000);
+    //g_LCD16x2.display(CURSOR_OFF);
+    //
+    //for (uint8_t nuert = 0; nuert < 1; nuert++)
+    //{
+    //    for (uint8_t pos = 0; pos < 13; pos++)
+    //    {
+    //        // scroll one position to left
+    //        g_LCD16x2.display(SCROLL_LEFT);
+    //        // step time
+    //        ThisThread::sleep_for(500);
+    //    }
+    //
+    //    // scroll 29 positions (string length + display length) to the right
+    //    // to move it offscreen right
+    //    for (uint8_t pos = 0; pos < 29; pos++)
+    //    {
+    //        // scroll one position to right
+    //        g_LCD16x2.display(SCROLL_RIGHT);
+    //        // step time
+    //        ThisThread::sleep_for(500);
+    //    }
+    //
+    //    // scroll 16 positions (display length + string length) to the left
+    //    // to move it back to center
+    //    for (uint8_t pos = 0; pos < 16; pos++)
+    //    {
+    //        // scroll one position to left
+    //        g_LCD16x2.display(SCROLL_LEFT);
+    //        // step time
+    //        ThisThread::sleep_for(500);
+    //    }
+    //
+    //    ThisThread::sleep_for(1000);
+    //}
 }
 
 void DHT11SensorAcquisition()
@@ -432,11 +432,17 @@ void DHT11SensorAcquisition()
 
                 g_LCD16x2.cls();
                 g_LCD16x2.locate(0, 0); // column, row
-                g_LCD16x2.printf("Temp: %4.2f F", f);
+                //g_LCD16x2.printf("Temp: %4.2f F", f); // TBD perhaps convert all to text with sprintf and then write.
+                std::string tempString = Utility::TemperatureToString(f);
+                g_LCD16x2.printf(tempString.c_str());
                 g_LCD16x2.locate(0, 1); // column, row
-                g_LCD16x2.printf("Humi: %4.2f %% RH", h);
+                //g_LCD16x2.printf("Humi: %4.2f %% RH", h);// TBD perhaps convert all to text with sprintf and then write.
+                std::string humiString = Utility::HumidityToString(h);
+                g_LCD16x2.printf(humiString.c_str());
 
                 Utility::g_STDIOMutex.lock();
+                printf("\nAdapted Temperature String:\n%s", tempString.c_str());
+                printf("\nAdapted Humidity String:\n%s\n", humiString.c_str());
                 printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
                 printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
                 Utility::g_STDIOMutex.unlock();
@@ -470,7 +476,7 @@ void DHT11SensorAcquisition()
                 g_LEDRed = LED_ON;
 
                 g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
-                g_LCD16x2.printf("Error Reading Sensor!"); // TBD, does it wraparound?
+                g_LCD16x2.printf("Error Sensor!"); // TBD, does it wraparound?
 
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
@@ -601,9 +607,9 @@ int main()
 
         // It seems that Mbed Callback class can only take in one argument.
         // Not to worry, we will improvise with an aggregate class type.
-        ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
-        ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
-        ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
+    //    ExternalLED_t external10mmLEDGreen(&g_External10mmLEDGreen, 100, 100);
+    //    ExternalLED_t external10mmLEDYellow(&g_External10mmLEDYellow, 200, 100);
+    //    ExternalLED_t external10mmLEDRed(&g_External10mmLEDRed, 500, 200);
 
     //    g_External10mmLEDThread1.start(callback(LEDSawToothWave, &g_ExternalPWMLEDGreen));
     //    g_External10mmLEDThread2.start(callback(LEDTriangularWave, &g_ExternalPWMLEDYellow));
