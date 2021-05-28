@@ -161,24 +161,5 @@ namespace Utility
         // Bring down the Ethernet interface.
         g_EthernetInterface.disconnect();
     }
-
-    //void PrintMemoryInfo()
-    //{
-    //// allocate enough room for every thread's stack statistics
-    //int cnt = osThreadGetCount();
-    //mbed_stats_stack_t *stats = (mbed_stats_stack_t*) malloc(cnt * sizeof(mbed_stats_stack_t));
-
-    //cnt = mbed_stats_stack_get_each(stats, cnt);
-    //for (int i = 0; i < cnt; i++)
-    //{
-    //printf("Thread: 0x%lX, Stack size: %lu / %lu\r\n", stats[i].thread_id, stats[i].max_size, stats[i].reserved_size);
-    //}
-    //free(stats);
-
-    //// Grab the heap statistics
-    //mbed_stats_heap_t heap_stats;
-    //mbed_stats_heap_get(&heap_stats);
-    //printf("Heap size: %lu / %lu bytes\r\n", heap_stats.current_size, heap_stats.reserved_size);
-    //}
 } // namespace
 
