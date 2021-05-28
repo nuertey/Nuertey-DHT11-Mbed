@@ -385,7 +385,7 @@ void DisplayLCDCapabilities()
     }
 }
 
-void DHT11SensorAcquisition(ExternalLED_t * pExternalLED)
+void DHT11SensorAcquisition()
 {
     NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
                                     NUERTEY_MQTT_BROKER_ADDRESS,
@@ -613,7 +613,7 @@ int main()
     //    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
     //    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
 
-        g_DHT11SensorThread.start(callback(DHT11SensorAcquisition, &external10mmLEDYellow));
+        DHT11SensorAcquisition();
 
         // Forget not proper thread joins:
     //    g_External10mmLEDThread1.join();
@@ -622,7 +622,6 @@ int main()
     //    g_External10mmLEDThread4.join();
     //    g_External10mmLEDThread5.join();
     //    g_External10mmLEDThread6.join();
-        g_DHT11SensorThread.join();
 
         Utility::ReleaseGlobalResources();
     }
