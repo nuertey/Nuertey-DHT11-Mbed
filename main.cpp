@@ -349,7 +349,7 @@ void DisplayLCDCapabilities()
     ThisThread::sleep_for(2000);
     g_LCD16x2.display(CURSOR_OFF);
 
-    for (uint8_t nuert = 0; nuert < 3; nuert++)
+    for (uint8_t nuert = 0; nuert < 1; nuert++)
     {
         for (uint8_t pos = 0; pos < 13; pos++)
         {
@@ -383,7 +383,7 @@ void DisplayLCDCapabilities()
     }
 }
 
-void DHT11SensorAcquisition()
+void DHT11SensorAcquisition(LCD * pLCD)
 {
     NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
                                     NUERTEY_MQTT_BROKER_ADDRESS,
@@ -428,11 +428,11 @@ void DHT11SensorAcquisition()
                 dp  = g_DHT11.CalculateDewPoint(f, h);
                 dpf = g_DHT11.CalculateDewPointFast(f, h);
 
-                g_LCD16x2.cls();
-                g_LCD16x2.locate(0, 0); // column, row
-                g_LCD16x2.printf("Temp: %4.2f F", f);
-                g_LCD16x2.locate(0, 1); // column, row
-                g_LCD16x2.printf("Humi: %4.2f %% RH", h);
+                pLCD->cls();
+                pLCD->locate(0, 0); // column, row
+                pLCD->printf("Temp: %4.2f F", f);
+                pLCD->locate(0, 1); // column, row
+                pLCD->printf("Humi: %4.2f %% RH", h);
 
                 Utility::g_STDIOMutex.lock();
                 printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
@@ -467,8 +467,8 @@ void DHT11SensorAcquisition()
                 // Indicate with the red LED that an error occurred.
                 g_LEDRed = LED_ON;
 
-                g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
-                g_LCD16x2.printf("Error Reading Sensor!"); // TBD, does it wraparound?
+                pLCD->cls(); // Also implicitly locates to (0, 0).
+                pLCD->printf("Error Reading Sensor!"); // TBD, does it wraparound?
 
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
@@ -611,9 +611,12 @@ int main()
     //    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
     //    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
 
+        // Note that DHT11SensorAcquisition() will eventually be called in interrupt context,
+        // or rather, a different context from ours; therefore if it needs to operate on any
+        // global variables, it is safer to pass a pointer to those variables along.
         Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
                                            CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
-                                           DHT11SensorAcquisition);
+                                           DHT11SensorAcquisition, &g_LCD16x2);
         if (!Utility::gs_CloudCommunicationsEventIdentifier)
         {
             printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
