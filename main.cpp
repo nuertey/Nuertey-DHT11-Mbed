@@ -217,7 +217,7 @@ NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
 // STM32 Pin: PB8
 // Signal   : I2C_A_SCL
 //
-LCD g_LCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
+//LCD g_LCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
         
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
@@ -318,6 +318,28 @@ struct ExternalLED_t
     uint32_t       m_TimeOff;
 };
 
+void PrepareRow1(LCD * pLCD16x2)
+{
+    pLCD16x2->create(0, downArrow);
+    pLCD16x2->create(1, upArrow);
+    pLCD16x2->create(2, rightArrow);
+    pLCD16x2->create(3, leftArrow);
+            
+    pLCD16x2->cls();
+    pLCD16x2->locate(0, 0);
+}
+
+void PrepareRow2(LCD * pLCD16x2)
+{
+    pLCD16x2->character(0, 1, 0);
+    pLCD16x2->character(3, 1, 1);
+    pLCD16x2->character(5, 1, 2);
+    pLCD16x2->character(7, 1, 3);
+            
+    pLCD16x2->locate(0, 1);
+}
+
+/*
 void DisplayLCDCapabilities()
 {
     g_LCD16x2.create(0, downArrow);
@@ -383,7 +405,7 @@ void DisplayLCDCapabilities()
     //
     //    ThisThread::sleep_for(1000);
     //}
-}
+}*/
 
 void DHT11SensorAcquisition()
 {
@@ -412,6 +434,11 @@ void DHT11SensorAcquisition()
 
         while (1)
         {
+            // Let us see if a local instantiation of the LCD driver each 
+            // iteration might give more better and consistent results. 
+            LCD theLCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
+            PrepareRow1(&theLCD16x2);
+            
             // Indicate that we are reading from DHT11 with green LED.
             g_LEDGreen = LED_ON;
 
@@ -430,15 +457,19 @@ void DHT11SensorAcquisition()
                 dp  = g_DHT11.CalculateDewPoint(f, h);
                 dpf = g_DHT11.CalculateDewPointFast(f, h);
 
-                g_LCD16x2.cls();
-                g_LCD16x2.locate(0, 0); // column, row
+                //g_LCD16x2.cls();
+                //g_LCD16x2.locate(0, 0); // column, row
                 //g_LCD16x2.printf("Temp: %4.2f F", f); // TBD perhaps convert all to text with sprintf and then write.
                 std::string tempString = Utility::TemperatureToString(f);
-                g_LCD16x2.printf(tempString.c_str());
-                g_LCD16x2.locate(0, 1); // column, row
+                //g_LCD16x2.printf(tempString.c_str());
+                //g_LCD16x2.locate(0, 1); // column, row
                 //g_LCD16x2.printf("Humi: %4.2f %% RH", h);// TBD perhaps convert all to text with sprintf and then write.
                 std::string humiString = Utility::HumidityToString(h);
-                g_LCD16x2.printf(humiString.c_str());
+                //g_LCD16x2.printf(humiString.c_str());
+                
+                theLCD16x2.printf(tempString.c_str());
+                PrepareRow2(&theLCD16x2);
+                theLCD16x2.printf(humiString.c_str());
 
                 Utility::g_STDIOMutex.lock();
                 printf("\nAdapted Temperature String:\n%s", tempString.c_str());
@@ -475,8 +506,9 @@ void DHT11SensorAcquisition()
                 // Indicate with the red LED that an error occurred.
                 g_LEDRed = LED_ON;
 
-                g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
-                g_LCD16x2.printf("Error Sensor!"); // TBD, does it wraparound?
+                //g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
+                //g_LCD16x2.printf("Error Sensor!"); // TBD, does it wraparound?
+                theLCD16x2.printf("Error Sensor!");
 
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
@@ -590,7 +622,7 @@ int main()
 {
     printf("\r\n\r\nNuertey-DHT11-Mbed - Beginning... \r\n\r\n");
 
-    DisplayLCDCapabilities();
+    //DisplayLCDCapabilities();
 
     if (Utility::InitializeGlobalResources())
     {
