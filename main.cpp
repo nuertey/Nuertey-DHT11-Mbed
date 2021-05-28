@@ -288,6 +288,8 @@ Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
 Thread            g_External10mmLEDThread6;
 
+Thread            g_DHT11SensorThread;
+
 // =============================
 // Begin Actual Implementations:
 // =============================
@@ -325,7 +327,7 @@ void DisplayLCDCapabilities()
 
     g_LCD16x2.cls();
     g_LCD16x2.locate(0, 0);
-    g_LCD16x2.printf("NUERTEY ODZEYEM\n");
+    g_LCD16x2.printf("NUCLEO-F767ZI\n");
     g_LCD16x2.character(0, 1, 0);
     g_LCD16x2.character(3, 1, 1);
     g_LCD16x2.character(5, 1, 2);
@@ -334,7 +336,7 @@ void DisplayLCDCapabilities()
     ThisThread::sleep_for(2000);
     g_LCD16x2.cls();
     g_LCD16x2.locate(0, 0);
-    g_LCD16x2.printf("NUCLEO-F767ZI\n");
+    g_LCD16x2.printf("NUERTEY ODZEYEM\n");
 
     ThisThread::sleep_for(2000);
     g_LCD16x2.display(DISPLAY_OFF);
@@ -383,7 +385,7 @@ void DisplayLCDCapabilities()
     }
 }
 
-void DHT11SensorAcquisition(LCD * pLCD)
+void DHT11SensorAcquisition(ExternalLED_t * pExternalLED)
 {
     NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
                                     NUERTEY_MQTT_BROKER_ADDRESS,
@@ -428,11 +430,11 @@ void DHT11SensorAcquisition(LCD * pLCD)
                 dp  = g_DHT11.CalculateDewPoint(f, h);
                 dpf = g_DHT11.CalculateDewPointFast(f, h);
 
-                pLCD->cls();
-                pLCD->locate(0, 0); // column, row
-                pLCD->printf("Temp: %4.2f F", f);
-                pLCD->locate(0, 1); // column, row
-                pLCD->printf("Humi: %4.2f %% RH", h);
+                g_LCD16x2.cls();
+                g_LCD16x2.locate(0, 0); // column, row
+                g_LCD16x2.printf("Temp: %4.2f F", f);
+                g_LCD16x2.locate(0, 1); // column, row
+                g_LCD16x2.printf("Humi: %4.2f %% RH", h);
 
                 Utility::g_STDIOMutex.lock();
                 printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
@@ -467,8 +469,8 @@ void DHT11SensorAcquisition(LCD * pLCD)
                 // Indicate with the red LED that an error occurred.
                 g_LEDRed = LED_ON;
 
-                pLCD->cls(); // Also implicitly locates to (0, 0).
-                pLCD->printf("Error Reading Sensor!"); // TBD, does it wraparound?
+                g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
+                g_LCD16x2.printf("Error Reading Sensor!"); // TBD, does it wraparound?
 
                 Utility::g_STDIOMutex.lock();
                 printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
@@ -611,34 +613,7 @@ int main()
     //    g_External10mmLEDThread5.start(callback(LEDBlinker, &external10mmLEDRed));
     //    g_External10mmLEDThread6.start(callback(LEDBlinker, &external10mmLEDGreen));
 
-        // Note that DHT11SensorAcquisition() will eventually be called in interrupt context,
-        // or rather, a different context from ours; therefore if it needs to operate on any
-        // global variables, it is safer to pass a pointer to those variables along.
-        Utility::gs_CloudCommunicationsEventIdentifier = Utility::gs_MasterEventQueue.call_in(
-                                           CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS,
-                                           DHT11SensorAcquisition, &g_LCD16x2);
-        if (!Utility::gs_CloudCommunicationsEventIdentifier)
-        {
-            printf("Error! Not enough memory available to allocate DHT11 Sensor Acquisition event.\r\n");
-        }
-        
-        // To further save RAM, as we have no other work to do in main() after
-        // initialization, we will dispatch the global event queue from here,
-        // thus avoiding the need to create a separate dispatch thread (context).
-        
-        // The dispatch function provides the context for running
-        // of the queue and can take a millisecond timeout to run for a
-        // fixed time or to just dispatch any pending events.
-        printf("\r\nAbout to dispatch regular and periodic events... \r\n");
-        Utility::gs_MasterEventQueue.dispatch_forever();
-        
-        Utility::g_STDIOMutex.lock();
-        printf("\r\nPeriodic events dispatch was EXPECTEDLY broken from somewhere. \r\n");
-        Utility::g_STDIOMutex.unlock();
-        
-        // As we are done dispatching, reset the event id so that potential
-        // callbacks do not attempt to perform actions on the Master Event Queue.
-        Utility::gs_CloudCommunicationsEventIdentifier = 0;
+        g_DHT11SensorThread.start(callback(DHT11SensorAcquisition, &external10mmLEDYellow));
 
         // Forget not proper thread joins:
     //    g_External10mmLEDThread1.join();
@@ -647,6 +622,7 @@ int main()
     //    g_External10mmLEDThread4.join();
     //    g_External10mmLEDThread5.join();
     //    g_External10mmLEDThread6.join();
+        g_DHT11SensorThread.join();
 
         Utility::ReleaseGlobalResources();
     }
