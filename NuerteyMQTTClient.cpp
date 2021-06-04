@@ -69,6 +69,13 @@ bool NuerteyMQTTClient::Connect()
     }
     else
     {
+        // Note: Default values are not defined for members of MQTTClient_connectOptions
+        // so it is good practice to specify all settings. If the MQTTClient_connectOptions
+        // structure is defined as an automatic variable, all members are set to random 
+        // values and thus must be set by the client application. If the MQTTClient_connectOptions
+        // structure is defined as a static variable, initialization (in compliant compilers) 
+        // sets all values to 0 (NULL for pointers). A keepAliveInterval setting of 0 prevents
+        // correct operation of the client and so you must at least set a value for keepAliveInterval. 
         MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
         data.MQTTVersion = 3;
         data.clientID.cstring = (char *)DEFAULT_MQTT_CLIENT_IDENTIFIER.c_str();
@@ -85,6 +92,18 @@ bool NuerteyMQTTClient::Connect()
         // Otherwise our subscriptions are retained and messages
         // sent with Quality of Service 1 and 2 are buffered by the broker.
         data.cleansession = 1;
+        
+        // The "keep alive" interval, measured in seconds, defines the 
+        // maximum time that should pass without communication between 
+        // the client and the server The client will ensure that at least
+        // one message travels across the network within each keep alive
+        // period. In the absence of a data-related message during the time
+        // period, the client sends a very small MQTT "ping" message, which
+        // the server will acknowledge. The keep alive interval enables the
+        // client to detect when the server is no longer available without
+        // having to wait for the long TCP/IP timeout. 
+        data.keepAliveInterval = 7200;
+        
         int retVal = MQTT::FAILURE;
         if ((retVal = m_PahoMQTTclient.connect(data)) != MQTT::SUCCESS)
         {

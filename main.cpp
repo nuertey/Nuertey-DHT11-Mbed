@@ -288,7 +288,9 @@ Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
 Thread            g_External10mmLEDThread6;
 
-Thread            g_DHT11SensorThread;
+NuerteyMQTTClient g_TheMQTTClient(&Utility::g_EthernetInterface, 
+                                    NUERTEY_MQTT_BROKER_ADDRESS,
+                                    NUERTEY_MQTT_BROKER_PORT);
 
 // =============================
 // Begin Actual Implementations:
@@ -409,13 +411,9 @@ void DisplayLCDCapabilities()
 
 void DHT11SensorAcquisition()
 {
-    NuerteyMQTTClient theMQTTClient(&Utility::g_EthernetInterface, 
-                                    NUERTEY_MQTT_BROKER_ADDRESS,
-                                    NUERTEY_MQTT_BROKER_PORT);
-
     // Indicate with the blue LED that MQTT network initialization is ongoing.
     g_LEDBlue = LED_ON;
-    bool retVal = theMQTTClient.Connect();
+    bool retVal = g_TheMQTTClient.Connect();
 
     if (retVal)
     {
@@ -426,8 +424,8 @@ void DHT11SensorAcquisition()
         // That design pattern is mandated by the embedded MQTT library to
         // facilitate context switching. Hence subscribe to every topic you
         // aim to publish.
-        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        theMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+        g_TheMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        g_TheMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
         g_LEDBlue = LED_OFF;
 
         //ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
@@ -488,12 +486,12 @@ void DHT11SensorAcquisition()
                 // null-termination, the received MQTT payload would have an extra "\x00" at the tail-end,
                 // which would cause the payload decoding by the peer to fail (at least on Python 3.7). 
                 std::string sensorTemperature = Utility::TruncateAndToString<float>(f, 2);
-                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
+                g_TheMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
                                        (void *)sensorTemperature.c_str(), 
                                        sensorTemperature.size());  
 
                 std::string sensorHumidity = Utility::TruncateAndToString<float>(h, 2);
-                theMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
+                g_TheMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
                                        (void *)sensorHumidity.c_str(), 
                                        sensorHumidity.size());  
                 
@@ -526,11 +524,11 @@ void DHT11SensorAcquisition()
         // Indicate with the blue LED that MQTT network de-initialization is ongoing.
         g_LEDBlue = LED_ON;
 
-        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        theMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+        g_TheMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+        g_TheMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
 
         // Bring down the MQTT session.
-        theMQTTClient.Disconnect();
+        g_TheMQTTClient.Disconnect();
         
         g_LEDBlue = LED_OFF;
     }

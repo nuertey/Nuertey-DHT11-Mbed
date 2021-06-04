@@ -65,7 +65,7 @@ public:
     static const std::string DEFAULT_MQTT_USERNAME;          // Let's not forget authentication as security is important. 
     static const std::string DEFAULT_MQTT_PASSWORD;          // Let's not forget authentication as security is important.
     static const uint16_t    DEFAULT_MQTT_BROKER_PORT = 1883;
-    static const uint32_t    DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_MSECS = 100;
+    static const uint32_t    DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_MSECS = 500;
     static const char * NUERTEY_ADDRESS_BOOK_MQTT_TOPIC;     // The Paho MQTT embedded client does not seem to like ...
     static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC1;       // playing nice with the null appended to ...
     static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC2;       // std::string::c_str() so rather use char *.
