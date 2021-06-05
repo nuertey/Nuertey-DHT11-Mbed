@@ -141,8 +141,12 @@ uint8_t leftArrow[8] =
 // outward-facing IP address. Port is particular to the MQTT protocol.
 //static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
 
+// test.mosquitto.org
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("5.196.95.208");
+
 // MQTT Broker IP on local LAN gives better results than outward-facing IP. 
 static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.42.0.1");
 static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
 
 // As we are constrained on embedded, prefer to send many topics with
@@ -287,11 +291,7 @@ Thread            g_External10mmLEDThread3;
 Thread            g_External10mmLEDThread4;
 Thread            g_External10mmLEDThread5;
 Thread            g_External10mmLEDThread6;
-
-NuerteyMQTTClient g_TheMQTTClient(&Utility::g_EthernetInterface, 
-                                    NUERTEY_MQTT_BROKER_ADDRESS,
-                                    NUERTEY_MQTT_BROKER_PORT);
-
+      
 // =============================
 // Begin Actual Implementations:
 // =============================
@@ -411,131 +411,147 @@ void DisplayLCDCapabilities()
 
 void DHT11SensorAcquisition()
 {
-    // Indicate with the blue LED that MQTT network initialization is ongoing.
-    g_LEDBlue = LED_ON;
-    bool retVal = g_TheMQTTClient.Connect();
+    static bool initial_run = true;
 
-    if (retVal)
+    NuerteyMQTTClient g_TheMQTTClient(&Utility::g_EthernetInterface, 
+                                    NUERTEY_MQTT_BROKER_ADDRESS,
+                                    NUERTEY_MQTT_BROKER_PORT);
+                              
+    //ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
+
+    while (1)
     {
-        // This echo back from the server is NOT just for our peace of mind, 
-        // NOT just to ensure that publishing did in fact get to the server/broker. 
-        // It is also to ensure that the internal design of NuerteyMQTTClient
-        // with the invocation of ::Yield() after every publish, is happy.
-        // That design pattern is mandated by the embedded MQTT library to
-        // facilitate context switching. Hence subscribe to every topic you
-        // aim to publish.
-        g_TheMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        g_TheMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
-        g_LEDBlue = LED_OFF;
+        // Let us see if a local instantiation of the LCD driver each 
+        // iteration might give more better and consistent results. 
+        LCD theLCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
+        PrepareRow1(&theLCD16x2);
+        
+        // Indicate that we are reading from DHT11 with green LED.
+        g_LEDGreen = LED_ON;
 
-        //ThisThread::sleep_for(DHT11_DEVICE_STABLE_STATUS_DELAY);
-
-        while (1)
+        auto result = g_DHT11.ReadData();
+        if (!result)
         {
-            // Let us see if a local instantiation of the LCD driver each 
-            // iteration might give more better and consistent results. 
-            LCD theLCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
-            PrepareRow1(&theLCD16x2);
+            // Clear red LED indicating previous error.
+            g_LEDRed = LED_OFF;
+
+            auto h = 0.0f, c = 0.0f, f = 0.0f, k = 0.0f, dp = 0.0f, dpf = 0.0f;
+
+            c   = g_DHT11.GetTemperature(TemperatureScale_t::CELCIUS);
+            f   = g_DHT11.GetTemperature(TemperatureScale_t::FARENHEIT);
+            k   = g_DHT11.GetTemperature(TemperatureScale_t::KELVIN);
+            h   = g_DHT11.GetHumidity();
+            dp  = g_DHT11.CalculateDewPoint(f, h);
+            dpf = g_DHT11.CalculateDewPointFast(f, h);
+
+            //g_LCD16x2.cls();
+            //g_LCD16x2.locate(0, 0); // column, row
+            //g_LCD16x2.printf("Temp: %4.2f F", f); // TBD perhaps convert all to text with sprintf and then write.
+            std::string tempString = Utility::TemperatureToString(f);
+            //g_LCD16x2.printf(tempString.c_str());
+            //g_LCD16x2.locate(0, 1); // column, row
+            //g_LCD16x2.printf("Humi: %4.2f %% RH", h);// TBD perhaps convert all to text with sprintf and then write.
+            std::string humiString = Utility::HumidityToString(h);
+            //g_LCD16x2.printf(humiString.c_str());
             
-            // Indicate that we are reading from DHT11 with green LED.
-            g_LEDGreen = LED_ON;
+            theLCD16x2.printf(tempString.c_str());
+            PrepareRow2(&theLCD16x2);
+            theLCD16x2.printf(humiString.c_str());
 
-            auto result = g_DHT11.ReadData();
-            if (!result)
+            Utility::g_STDIOMutex.lock();
+            printf("\nAdapted Temperature String:\n%s", tempString.c_str());
+            printf("\nAdapted Humidity String:\n%s\n", humiString.c_str());
+            printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
+            printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
+            Utility::g_STDIOMutex.unlock();
+
+            std::string sensorTemperature = Utility::TruncateAndToString<float>(f, 2);
+            std::string sensorHumidity = Utility::TruncateAndToString<float>(h, 2);
+            
+            // Indicate that publishing is about to commence with the blue LED.
+            g_LEDBlue = LED_ON;
+
+            if (initial_run)
             {
-                // Clear red LED indicating previous error.
-                g_LEDRed = LED_OFF;
+                initial_run = false;
+                bool retVal = g_TheMQTTClient.Connect();
 
-                auto h = 0.0f, c = 0.0f, f = 0.0f, k = 0.0f, dp = 0.0f, dpf = 0.0f;
-
-                c   = g_DHT11.GetTemperature(TemperatureScale_t::CELCIUS);
-                f   = g_DHT11.GetTemperature(TemperatureScale_t::FARENHEIT);
-                k   = g_DHT11.GetTemperature(TemperatureScale_t::KELVIN);
-                h   = g_DHT11.GetHumidity();
-                dp  = g_DHT11.CalculateDewPoint(f, h);
-                dpf = g_DHT11.CalculateDewPointFast(f, h);
-
-                //g_LCD16x2.cls();
-                //g_LCD16x2.locate(0, 0); // column, row
-                //g_LCD16x2.printf("Temp: %4.2f F", f); // TBD perhaps convert all to text with sprintf and then write.
-                std::string tempString = Utility::TemperatureToString(f);
-                //g_LCD16x2.printf(tempString.c_str());
-                //g_LCD16x2.locate(0, 1); // column, row
-                //g_LCD16x2.printf("Humi: %4.2f %% RH", h);// TBD perhaps convert all to text with sprintf and then write.
-                std::string humiString = Utility::HumidityToString(h);
-                //g_LCD16x2.printf(humiString.c_str());
-                
-                theLCD16x2.printf(tempString.c_str());
-                PrepareRow2(&theLCD16x2);
-                theLCD16x2.printf(humiString.c_str());
-
-                Utility::g_STDIOMutex.lock();
-                printf("\nAdapted Temperature String:\n%s", tempString.c_str());
-                printf("\nAdapted Humidity String:\n%s\n", humiString.c_str());
-                printf("\nTemperature in Kelvin: %4.2fK, Celcius: %4.2f°C, Farenheit %4.2f°F\n", k, c, f);
-                printf("Humidity is %4.2f, Dewpoint: %4.2f, Dewpoint fast: %4.2f\n", h, dp, dpf);
-                Utility::g_STDIOMutex.unlock();
-
-                // Indicate that publishing is about to commence with the blue LED.
-                g_LEDBlue = LED_ON;
-                
-                // CAUTION: Per the Paho MQTT library's behavior, the 3rd size parameter to Publish()
-                // must match the 2nd c_str parameter exactly!, not more nor less, for the peer receiving
-                // side to be able to decode the MQTT payload successfully. If, for example, one attempts
-                // to over-compensate by, say, increasing size by 1 in order to account for some aberrant 
-                // null-termination, the received MQTT payload would have an extra "\x00" at the tail-end,
-                // which would cause the payload decoding by the peer to fail (at least on Python 3.7). 
-                std::string sensorTemperature = Utility::TruncateAndToString<float>(f, 2);
-                g_TheMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
-                                       (void *)sensorTemperature.c_str(), 
-                                       sensorTemperature.size());  
-
-                std::string sensorHumidity = Utility::TruncateAndToString<float>(h, 2);
-                g_TheMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
-                                       (void *)sensorHumidity.c_str(), 
-                                       sensorHumidity.size());  
-                
-                // Indicate that publishing was successful and a message was 
-                // received in response by turning off the blue LED.
-                g_LEDBlue = LED_OFF; 
+                if (retVal)
+                {
+                    // This echo back from the server is NOT just for our peace of mind, 
+                    // NOT just to ensure that publishing did in fact get to the server/broker. 
+                    // It is also to ensure that the internal design of NuerteyMQTTClient
+                    // with the invocation of ::Yield() after every publish, is happy.
+                    // That design pattern is mandated by the embedded MQTT library to
+                    // facilitate context switching. Hence subscribe to every topic you
+                    // aim to publish.
+                    g_TheMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+                    g_TheMQTTClient.Subscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+                    
+                    Utility::g_STDIOMutex.lock();
+                    printf("\nSuccessfully connected to MQTT Broker/Server on initiial_run and subscribed to topis:->\n\t%s\n\t%s", 
+                           NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+                    Utility::g_STDIOMutex.unlock();
+                }
+                else
+                {
+                    Utility::g_STDIOMutex.lock();
+                    printf("\nFailed to connect to MQTT Broker/Server on initiial_run :-> %s:%d", 
+                           NUERTEY_MQTT_BROKER_ADDRESS.c_str(), NUERTEY_MQTT_BROKER_PORT);
+                    Utility::g_STDIOMutex.unlock();
+                }
             }
-            else
-            {
-                // Indicate with the red LED that an error occurred.
-                g_LEDRed = LED_ON;
+            
+            // CAUTION: Per the Paho MQTT library's behavior, the 3rd size parameter to Publish()
+            // must match the 2nd c_str parameter exactly!, not more nor less, for the peer receiving
+            // side to be able to decode the MQTT payload successfully. If, for example, one attempts
+            // to over-compensate by, say, increasing size by 1 in order to account for some aberrant 
+            // null-termination, the received MQTT payload would have an extra "\x00" at the tail-end,
+            // which would cause the payload decoding by the peer to fail (at least on Python 3.7). 
+            g_TheMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1, 
+                                   (void *)sensorTemperature.c_str(), 
+                                   sensorTemperature.size());  
 
-                //g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
-                //g_LCD16x2.printf("Error Sensor!"); // TBD, does it wraparound?
-                theLCD16x2.printf("Error Sensor!");
+            g_TheMQTTClient.Publish(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2, 
+                                   (void *)sensorHumidity.c_str(), 
+                                   sensorHumidity.size());  
+            
+            // Indicate that publishing was successful and a message was 
+            // received in response by turning off the blue LED.
+            g_LEDBlue = LED_OFF; 
+        }
+        else
+        {
+            // Indicate with the red LED that an error occurred.
+            g_LEDRed = LED_ON;
 
-                Utility::g_STDIOMutex.lock();
-                printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
-                      result.value(), result.message().c_str());
-                Utility::g_STDIOMutex.unlock();
-            }
+            //g_LCD16x2.cls(); // Also implicitly locates to (0, 0).
+            //g_LCD16x2.printf("Error Sensor!"); // TBD, does it wraparound?
+            theLCD16x2.printf("Error Sensor!");
 
-            g_LEDGreen = LED_OFF;
-            // Per device datasheet specifications:
-            //
-            // "Sampling period：Secondary Greater than 2 seconds"
-            ThisThread::sleep_for(DHT11_DEVICE_SAMPLING_PERIOD);
+            Utility::g_STDIOMutex.lock();
+            printf("Error! g_DHT11.ReadData() returned: [%d] -> %s\n", 
+                  result.value(), result.message().c_str());
+            Utility::g_STDIOMutex.unlock();
         }
 
-        // Indicate with the blue LED that MQTT network de-initialization is ongoing.
-        g_LEDBlue = LED_ON;
-
-        g_TheMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
-        g_TheMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
-
-        // Bring down the MQTT session.
-        g_TheMQTTClient.Disconnect();
-        
-        g_LEDBlue = LED_OFF;
+        g_LEDGreen = LED_OFF;
+        // Per device datasheet specifications:
+        //
+        // "Sampling period：Secondary Greater than 2 seconds"
+        ThisThread::sleep_for(DHT11_DEVICE_SAMPLING_PERIOD);
     }
-    else
-    {
-        g_LEDBlue = LED_OFF;
-    }
+
+    // Indicate with the blue LED that MQTT network de-initialization is ongoing.
+    g_LEDBlue = LED_ON;
+
+    g_TheMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC1);
+    g_TheMQTTClient.UnSubscribe(NUCLEO_F767ZI_DHT11_IOT_MQTT_TOPIC2);
+
+    // Bring down the MQTT session.
+    g_TheMQTTClient.Disconnect();
+    
+    g_LEDBlue = LED_OFF;
 }
 
 void LEDBlinker(ExternalLED_t * pExternalLED)

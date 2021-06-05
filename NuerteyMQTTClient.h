@@ -65,7 +65,7 @@ public:
     static const std::string DEFAULT_MQTT_USERNAME;          // Let's not forget authentication as security is important. 
     static const std::string DEFAULT_MQTT_PASSWORD;          // Let's not forget authentication as security is important.
     static const uint16_t    DEFAULT_MQTT_BROKER_PORT = 1883;
-    static const uint32_t    DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_MSECS = 500;
+    static const uint32_t    DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_MSECS = 200;
     static const char * NUERTEY_ADDRESS_BOOK_MQTT_TOPIC;     // The Paho MQTT embedded client does not seem to like ...
     static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC1;       // playing nice with the null appended to ...
     static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC2;       // std::string::c_str() so rather use char *.
@@ -125,7 +125,7 @@ public:
 private:
     NetworkInterface *                            m_pNetworkInterface;
     MQTTNetwork                                   m_MQTTNetwork;
-    MQTT::Client<MQTTNetwork, Countdown, 1024, 5> m_PahoMQTTclient;       // Increase the maximum packet size to 1Kb.
+    MQTT::Client<MQTTNetwork, Countdown, 200, 5>  m_PahoMQTTclient;       // Increase the maximum packet size to 200 bytes.
                                                                           // Increase the maximum number of subscriptions to 5.
     std::optional<std::string>                    m_MQTTBrokerDomainName; // Domain name would not always necessarily exist...
     std::string                                   m_MQTTBrokerAddress;    // However IP Address always would.
