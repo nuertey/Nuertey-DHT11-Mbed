@@ -413,7 +413,7 @@ void DHT11SensorAcquisition()
 {
     static bool initial_run = true;
 
-    NuerteyMQTTClient g_TheMQTTClient(&Utility::g_EthernetInterface, 
+    NuerteyMQTTClient g_TheMQTTClient(Utility::g_pNetworkInterface, 
                                     NUERTEY_MQTT_BROKER_ADDRESS,
                                     NUERTEY_MQTT_BROKER_PORT);
                               

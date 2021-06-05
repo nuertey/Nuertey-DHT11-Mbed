@@ -45,6 +45,16 @@ NuerteyMQTTClient::NuerteyMQTTClient(NetworkInterface * pNetworkInterface, const
     , m_IsMQTTSessionEstablished(false)
 {
     mbed_trace_init();
+    
+    nsapi_size_or_error_t status = m_pNetworkInterface->connect();
+    if (status < NSAPI_ERROR_OK)
+    {
+        printf("\r\n\r\nError! g_pNetworkInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
+    }
+    else
+    {
+        printf("SUCCESS! Network interface connected successfully!\n");
+    }
 }
 
 NuerteyMQTTClient::~NuerteyMQTTClient()
