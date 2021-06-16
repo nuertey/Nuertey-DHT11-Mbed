@@ -429,10 +429,15 @@ namespace Utility
 
     const auto ComposeSystemStatistics = []()
     {
-        const char * ip = g_EthernetInterface.get_ip_address();
-        const char * netmask = g_EthernetInterface.get_netmask();
-        const char * gateway = g_EthernetInterface.get_gateway();
-        const char * mac = g_EthernetInterface.get_mac_address();
+        //const char * ip = g_EthernetInterface.get_ip_address();
+        //const char * netmask = g_EthernetInterface.get_netmask();
+        //const char * gateway = g_EthernetInterface.get_gateway();
+        //const char * mac = g_EthernetInterface.get_mac_address();
+
+        const char * ip = g_pNetworkInterface->get_ip_address();
+        const char * netmask = g_pNetworkInterface->get_netmask();
+        const char * gateway = g_pNetworkInterface->get_gateway();
+        const char * mac = g_pNetworkInterface->get_mac_address();
 
         mbed_stats_sys_t stats;
         mbed_stats_sys_get(&stats);

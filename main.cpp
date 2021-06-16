@@ -473,11 +473,12 @@ void DHT11SensorAcquisition()
 
             if (initial_run)
             {
-                initial_run = false;
                 bool retVal = g_TheMQTTClient.Connect();
 
                 if (retVal)
                 {
+                    initial_run = false;
+                    
                     // This echo back from the server is NOT just for our peace of mind, 
                     // NOT just to ensure that publishing did in fact get to the server/broker. 
                     // It is also to ensure that the internal design of NuerteyMQTTClient

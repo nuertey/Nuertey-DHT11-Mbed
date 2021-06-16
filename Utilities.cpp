@@ -130,25 +130,33 @@ namespace Utility
 
         if (!g_pNetworkInterface)
         {
+            g_STDIOMutex.lock();
             printf("FATAL! No network interface found.\n");
+            g_STDIOMutex.unlock();
             return false;
         }
 
         // Asynchronously monitor for Network Status events.
-        g_EthernetInterface.attach(&NetworkStatusCallback);
+        //g_EthernetInterface.attach(&NetworkStatusCallback);
+        g_pNetworkInterface->attach(&NetworkStatusCallback);
 
         // Use DHCP so that our IP address and other related configuration information such as the subnet mask and default gateway are automatically provided.
-        nsapi_size_or_error_t status = g_EthernetInterface.connect();
-        //nsapi_size_or_error_t status = g_pNetworkInterface->connect();
+        //nsapi_size_or_error_t status = g_EthernetInterface.connect();
+        nsapi_size_or_error_t status = g_pNetworkInterface->connect();
         if (status < NSAPI_ERROR_OK)
         {
-            printf("\r\n\r\nError! g_EthernetInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
-            //printf("\r\n\r\nError! g_pNetworkInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
+            g_STDIOMutex.lock();
+            //printf("\r\n\r\nError! g_EthernetInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
+            printf("\r\n\r\nError! g_pNetworkInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
+            g_STDIOMutex.unlock();
             return false;
         }
         else
         {
-            printf("SUCCESS! Ethernet interface connected successfully!\n");
+            g_STDIOMutex.lock();
+            //printf("SUCCESS! Ethernet interface connected successfully!\n");
+            printf("SUCCESS! Network interface connected successfully!\n");
+            g_STDIOMutex.unlock();
             
             //g_NTPClient.set_server("time.google.com", 123);
             //time_t now = g_NTPClient.get_timestamp();
