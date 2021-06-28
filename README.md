@@ -3,17 +3,8 @@
 An ARM Mbed application that illustrates how a NUCLEO-F767ZI can be 
 connected to a DHT11 Temperature and Humidity sensor and values 
 output to an LCD 16x2 display, all mocked-up via a breadboard. This
-allows us to periodically obtain temperature and humidity readings.
-
-Furthermore, the application continuously blinks 3 10mm external 
-LEDs connected to various I/O ports at different frequencies.
-
-And lastly, the application employs PWM output pins on the 
-NUCLEO-F767ZI to vary the intensity of 3 other 10mm LEDs according to 
-an on-the-fly calculated sawtooth waveform pattern and, precomputed 
-triangular and sinusoidal waveform function values. Essentially,  
-the values of said waveforms are scaled and used as the duty cycle
-in driving, dimming, and brightening the 10mm LEDs.
+allows us to periodically obtain temperature and humidity readings and
+also present the graphed results via a python MQTT dashboard.
 
 ![alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_dashboard_1.jpeg?raw=true)
 ![alt text](https://github.com/nuertey/RandomArtifacts/blob/master/climate_dashboard_2.jpeg?raw=true)
