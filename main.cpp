@@ -125,14 +125,15 @@ uint8_t leftArrow[8] =
 
 // Laptop running Mosquitto MQTT Broker/Server hosted on Ubuntu Linux
 // outward-facing IP address. Port is particular to the MQTT protocol.
-//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185");
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("96.68.46.185"); // 96-68-46-185-static.hfc.comcastbusiness.net
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("fe80::7e98:14d8:418a:dca8"); // IPv6 Local address
 
 // test.mosquitto.org
 //static const std::string NUERTEY_MQTT_BROKER_ADDRESS("5.196.95.208");
 
 // MQTT Broker IP on local LAN gives better results than outward-facing IP. 
-static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
-//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.42.0.1");
+//static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.50.10.25");
+static const std::string NUERTEY_MQTT_BROKER_ADDRESS("10.42.0.1");
 static const uint16_t    NUERTEY_MQTT_BROKER_PORT(1883);
 
 // As we are constrained on embedded, prefer to send many topics with

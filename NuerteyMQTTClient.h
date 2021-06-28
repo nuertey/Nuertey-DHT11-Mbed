@@ -125,7 +125,7 @@ public:
 private:
     NetworkInterface *                            m_pNetworkInterface;
     MQTTNetwork                                   m_MQTTNetwork;
-    MQTT::Client<MQTTNetwork, Countdown, 200, 5>  m_PahoMQTTclient;       // Increase the maximum packet size to 200 bytes.
+    MQTT::Client<MQTTNetwork, Countdown, 1024, 5> m_PahoMQTTclient;       // Increase the maximum packet size to 1 Kbytes.
                                                                           // Increase the maximum number of subscriptions to 5.
     std::optional<std::string>                    m_MQTTBrokerDomainName; // Domain name would not always necessarily exist...
     std::string                                   m_MQTTBrokerAddress;    // However IP Address always would.

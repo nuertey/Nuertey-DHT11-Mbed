@@ -65,7 +65,7 @@ bool NuerteyMQTTClient::Connect()
     nsapi_error_t rc = m_MQTTNetwork.connect(m_MQTTBrokerAddress.c_str(), m_MQTTBrokerPort);
     if (rc != NSAPI_ERROR_OK)
     {
-        printf("\r\n\r\nError! TCP.connect() returned: [%d] -> %s\n", rc, ToString(rc).c_str());
+        printf("\r\n\r\nError! TCP.connect() to Broker returned: [%d] -> %s\n", rc, ToString(rc).c_str());
     }
     else
     {
