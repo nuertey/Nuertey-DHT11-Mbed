@@ -151,8 +151,22 @@ inline static auto make_mqtt_connection_error_map()
 static MQTTConnectionErrorMap_t gs_MQTTConnectionErrorMap_t = make_mqtt_connection_error_map();
 
 inline std::string ToString(const MQTTConnectionError_t & key)
-{
-    return (gs_MQTTConnectionErrorMap_t.at(key));
+{    
+    std::string result;
+
+    // Prevent the possibility of std::out_of_range exception if the container
+    // does not have an error element with the specified key.
+    auto iter = gs_MQTTConnectionErrorMap_t.find(key);     
+    if (iter != gs_MQTTConnectionErrorMap_t.end())
+    {
+        result = iter->second;
+    }
+    else
+    {
+        result = std::string("\"Warning! Code does not indicate an error and consequently does not exist in gs_MQTTConnectionErrorMap_t!\"");
+    }
+    
+    return result;
 }
 
 using ErrorCodesMap_t = std::map<nsapi_size_or_error_t, std::string>;
@@ -189,7 +203,21 @@ static ErrorCodesMap_t gs_ErrorCodesMap = make_error_codes_map();
 
 inline std::string ToString(const nsapi_size_or_error_t & key)
 {
-    return (gs_ErrorCodesMap.at(key));
+    std::string result;
+
+    // Prevent the possibility of std::out_of_range exception if the container
+    // does not have an error element with the specified key.
+    auto iter = gs_ErrorCodesMap.find(key);     
+    if (iter != gs_ErrorCodesMap.end())
+    {
+        result = iter->second;
+    }
+    else
+    {
+        result = std::string("\"Warning! Code does not indicate an error and consequently does not exist in gs_ErrorCodesMap!\"");
+    }
+    
+    return result;
 }
 
 enum class TimeTopic_t
@@ -362,6 +390,34 @@ namespace Utility
         return static_cast<typename std::underlying_type<E>::type>(e);
     }
 
+    const auto GetNetworkInterfaceProfile = [](NetworkInterface * pInterface)
+    {
+        std::optional<const char *> ip(std::nullopt);
+        std::optional<const char *> netmask(std::nullopt);
+        std::optional<const char *> gateway(std::nullopt);
+        std::optional<const char *> mac(std::nullopt);
+        
+        // Retrieve the network address(es):
+        SocketAddress socketAddress;
+        pInterface->get_ip_address(&socketAddress);
+        ip = socketAddress.get_ip_address();
+
+        SocketAddress socketAddress1;
+        pInterface->get_netmask(&socketAddress1);        
+        netmask = socketAddress1.get_ip_address();
+        
+        SocketAddress socketAddress2;
+        pInterface->get_gateway(&socketAddress2);
+        gateway = socketAddress2.get_ip_address();
+        
+        // "Provided MAC address is intended for info or debug purposes
+        // and may be not provided if the underlying network interface
+        // does not provide a MAC address."
+        mac = pInterface->get_mac_address();
+        
+        return std::make_tuple(ip, netmask, gateway, mac);
+    };
+    
     const auto IsDomainNameAddress = [](const std::string & address)
     {
         bool result = false;
@@ -376,41 +432,50 @@ namespace Utility
         return result;
     };
 
-    // Be careful about designating the return here as const. It will
-    // trap you in some sneaky behavior as a move from the std::optional
-    // will rather invoke the copy constructor without the compiler complaining.
-    const auto ResolveAddressIfDomainName = [](const std::string & address)
+    const auto ResolveAddressIfDomainName = [](const std::string & address
+                                             , NetworkInterface * pInterface
+                                             , SocketAddress * pTheSocketAddress)
     {
-        std::optional<std::string> domainName(std::nullopt);
-        std::string ipAddress = address;
+        std::optional<std::string> ipAddress(std::nullopt);
 
         if (!address.empty())
         {
             if (IsDomainNameAddress(address))
             {
-                domainName.emplace(address);
-                SocketAddress serverSocketAddress;
-                nsapi_size_or_error_t retVal;
+                // Note that the MBED_ASSERT macro is only available in the Debug 
+                // and Development build profiles and not in the Release build profile. 
+                MBED_ASSERT(pInterface);
 
-                // Resolve Domain Name :
-                do
+                printf("Performing DNS lookup for : \"%s\" ...\n", address.c_str());
+                nsapi_error_t retVal = pInterface->gethostbyname(address.c_str(), pTheSocketAddress);
+                if (retVal < 0)
                 {
-                    printf("\r\nPerforming DNS lookup for : \"%s\" ...", address.c_str());
-                    retVal = g_EthernetInterface.gethostbyname(address.c_str(), &serverSocketAddress);
-                    if (retVal < 0)
-                    {
-                        printf("\r\nError! On DNS lookup, Network returned: [%d] -> %s", retVal, ToString(retVal).c_str());
-                    }
-                }  while (retVal < 0);
+                    printf("Error! On DNS lookup, Network returned: [%d] -> %s\n", retVal, ToString(retVal).c_str());
+                }
 
-                //g_EthernetInterface.get_ip_address(&serverSocketAddress);
-                ipAddress = std::string(serverSocketAddress.get_ip_address());
+                ipAddress = pTheSocketAddress->get_ip_address();
+            }
+            else
+            {
+                // Assume that we are already dealing with an IP address. i.e.,
+                // as the designer of this application, I am mandating that the
+                // user can choose to specify IP addresses directly in the mbed_app.json
+                // echo-server-hostname field. This will facilitate testing with
+                // locally hosted Echo Servers, which by necessity, do not have 
+                // DNS names. 
+                
+                // In which case the following is how we can ensure that the requisite 
+                // SocketAddress object that is normally created during FQDN resolution,
+                // is manually constructed and propagated back to the User:
+                SocketAddress tempSockAddress(address.c_str(), 0);
+                *pTheSocketAddress = tempSockAddress;
+
+                ipAddress = address.c_str();                
             }
         }
 
-        return std::make_pair(std::move(ipAddress), std::move(domainName));
+        return ipAddress;
     };
-
     template <typename T>
     std::string IntegerToHex(T i)
     {
@@ -429,15 +494,7 @@ namespace Utility
 
     const auto ComposeSystemStatistics = []()
     {
-        //const char * ip = g_EthernetInterface.get_ip_address();
-        //const char * netmask = g_EthernetInterface.get_netmask();
-        //const char * gateway = g_EthernetInterface.get_gateway();
-        //const char * mac = g_EthernetInterface.get_mac_address();
-
-        const char * ip = g_pNetworkInterface->get_ip_address();
-        const char * netmask = g_pNetworkInterface->get_netmask();
-        const char * gateway = g_pNetworkInterface->get_gateway();
-        const char * mac = g_pNetworkInterface->get_mac_address();
+        auto [ip, netmask, gateway, mac] = GetNetworkInterfaceProfile(g_pNetworkInterface);
 
         mbed_stats_sys_t stats;
         mbed_stats_sys_get(&stats);
@@ -468,10 +525,10 @@ namespace Utility
         
         // Note that ternary operators must work on the same type for the
         // second and third operands, or implicitly convertible types anyway.
-        jsonObject1["[c] MAC Address"] = picojson::value(std::string(mac ? mac : "None"));
-        jsonObject1["[d] IP Address"] = picojson::value(std::string(ip ? ip : "None"));
-        jsonObject1["[e] Netmask"] = picojson::value(std::string(netmask ? netmask : "None"));
-        jsonObject1["[f] Gateway"] = picojson::value(std::string(gateway ? gateway : "None"));
+        jsonObject1["[c] MAC Address"] = picojson::value(std::string(mac.value_or("(Null)")));
+        jsonObject1["[d] IP Address"] = picojson::value(std::string(ip.value_or("(Null)")));
+        jsonObject1["[e] Netmask"] = picojson::value(std::string(netmask.value_or("(Null)")));
+        jsonObject1["[f] Gateway"] = picojson::value(std::string(gateway.value_or("(Null)")));
         
         #ifdef MBED_MAJOR_VERSION
             jsonObject2["[g] MBED OS Version"] = picojson::value(

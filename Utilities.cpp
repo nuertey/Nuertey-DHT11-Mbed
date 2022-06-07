@@ -61,6 +61,15 @@ namespace Utility
         case NSAPI_STATUS_GLOBAL_UP:
             printf("Global IP address set!\r\n");
             g_STDIOMutex.unlock();
+            
+            //g_NTPClient.set_server("time.google.com", 123);
+            //time_t now = g_NTPClient.get_timestamp();
+            //set_time(now);
+            g_NTPClient.SynchronizeRTCTimestamp();
+            
+            // By means of DHCP, extract our IP address and other related 
+            // configuration information such as the subnet mask and default gateway.
+            std::tie(g_NetworkInterfaceInfo, g_SystemProfile, g_BaseRegisterValues, g_HeapStatistics) = ComposeSystemStatistics();
             break;
         case NSAPI_STATUS_DISCONNECTED:
             printf("Socket disconnected from network!\r\n");
@@ -140,31 +149,11 @@ namespace Utility
         //g_EthernetInterface.attach(&NetworkStatusCallback);
         g_pNetworkInterface->attach(&NetworkStatusCallback);
 
-        // Use DHCP so that our IP address and other related configuration information such as the subnet mask and default gateway are automatically provided.
-        //nsapi_size_or_error_t status = g_EthernetInterface.connect();
-        nsapi_size_or_error_t status = g_pNetworkInterface->connect();
-        if (status < NSAPI_ERROR_OK)
-        {
-            g_STDIOMutex.lock();
-            //printf("\r\n\r\nError! g_EthernetInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
-            printf("\r\n\r\nError! g_pNetworkInterface.connect() returned: [%d] -> %s\n", status, ToString(status).c_str());
-            g_STDIOMutex.unlock();
-            return false;
-        }
-        else
-        {
-            g_STDIOMutex.lock();
-            //printf("SUCCESS! Ethernet interface connected successfully!\n");
-            printf("SUCCESS! Network interface connected successfully!\n");
-            g_STDIOMutex.unlock();
-            
-            //g_NTPClient.set_server("time.google.com", 123);
-            //time_t now = g_NTPClient.get_timestamp();
-            //set_time(now);
-            g_NTPClient.SynchronizeRTCTimestamp();
-            std::tie(g_NetworkInterfaceInfo, g_SystemProfile, g_BaseRegisterValues, g_HeapStatistics) = ComposeSystemStatistics();
-            return true;
-        }
+        g_pNetworkInterface->set_blocking(false);
+        [[maybe_unused]] auto asynchronous_connect_return_perhaps_can_be_safely_ignored \
+                                               = g_pNetworkInterface->connect();
+        
+        return true;
     }
 
     // For symmetry and to encourage correct and explicit cleanups.
