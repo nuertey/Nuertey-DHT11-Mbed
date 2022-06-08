@@ -69,12 +69,13 @@
 #include <array>
 #include <time.h> 
 #include "mbed.h"
+#include "Utilities.h"
 
 #define PIN_HIGH  1
 #define PIN_LOW   0
 
 // Enforce that these errors should always be checked whenever and 
-// whereever they are returned.
+// wherever they are returned.
 
 // TBD: Nuertey Odzeyem; double-check if the below actually does imply
 // that we dont need a SUCCESS value in the enum and consequent message()
@@ -103,22 +104,6 @@ enum class TemperatureScale_t : uint8_t
     FARENHEIT,
     KELVIN
 };
-
-template <typename T, typename U>
-struct TrueTypesEquivalent : std::is_same<typename std::decay<T>::type, U>::type
-{};
-
-template <typename E>
-constexpr auto ToUnderlyingType(E e) -> typename std::underlying_type<E>::type
-{
-    return static_cast<typename std::underlying_type<E>::type>(e);
-}
-
-template <typename E, typename V = int8_t>
-constexpr auto ToEnum(V value) -> E
-{
-    return static_cast<E>(value);
-}
 
 // Register for implicit conversion to error_code:
 //
@@ -304,7 +289,7 @@ std::error_code NuerteyDHT11Device<T>::ReadData()
     theDigitalInOutPin.mode(PullUp);
     
     // Just to allow things to stabilize:
-    ThisThread::sleep_for(1);
+    ThisThread::sleep_for(1ms);
     
     theDigitalInOutPin.output();
     theDigitalInOutPin = PIN_LOW;
@@ -314,7 +299,7 @@ std::error_code NuerteyDHT11Device<T>::ReadData()
     {
         // "...and this process must take at least 18ms to ensure DHT’s 
         // detection of MCU's signal", so err on the side of caution.
-        ThisThread::sleep_for(20);
+        ThisThread::sleep_for(20ms);
     }
     else if constexpr (std::is_same<T, DHT22_t>::value)
     {
@@ -322,7 +307,7 @@ std::error_code NuerteyDHT11Device<T>::ReadData()
         // of caution by doubling the amount. Per Mbed docs, spinning
         // with wait_us() on milliseconds here is not recommended as it
         // would affect multi-threaded performance.
-        ThisThread::sleep_for(2);
+        ThisThread::sleep_for(2ms);
     }
 
     uint8_t i = 0, j = 0, b = 0;

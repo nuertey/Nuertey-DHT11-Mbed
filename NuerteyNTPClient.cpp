@@ -18,7 +18,7 @@ NuerteyNTPClient::NuerteyNTPClient(NetworkInterface * pNetworkInterface, const s
 {
 }
 
-void NuerteyNTPClient::SynchronizeRTCTimestamp(const uint32_t & timeout)
+void NuerteyNTPClient::SynchronizeRTCTimestamp()
 {
     Utility::g_STDIOMutex.lock();
     printf("\r\n\r\nDefault date and time before NTP is :-> [%s UTC]\r\n", Utility::WhatTimeNow().c_str());
@@ -61,7 +61,7 @@ void NuerteyNTPClient::SynchronizeRTCTimestamp(const uint32_t & timeout)
     UDPSocket sock;
     sock.bind(DEFAULT_NTP_CLIENT_PORT);
     sock.set_blocking(false);
-    sock.set_timeout(timeout); // Set timeout as we are on embedded.
+    sock.set_timeout(BLOCKING_SOCKET_TIMEOUT_MILLISECONDS); // Set timeout as we are on embedded.
 
     sock.open(m_pNetworkInterface);
 

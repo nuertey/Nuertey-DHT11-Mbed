@@ -48,36 +48,26 @@
 #include <cstdint>
 #include <optional>
 #include "NetworkInterface.h"
-#include "MQTTmbed.h"
-#include "MQTTClient.h"
-#include "MQTTNetwork.h"
-//#include "nanopb/source/protobuf/pb_common.h"
-//#include "nanopb/source/protobuf/pb_encode.h"
-//#include "nanopb/source/protobuf/pb_decode.h"
-
-#define MQTTCLIENT_QOS1 1
+#include <MQTTClientMbedOs.h>
+#include "TCPSocket.h"
+#include "Utilities.h"
 
 class NuerteyMQTTClient 
 {
 public:
-    static const std::string DEFAULT_MQTT_BROKER_ADDRESS;    // I am targeting "broker.hivemq.com" for testing 
-    static const std::string DEFAULT_MQTT_CLIENT_IDENTIFIER; // For now I will use "nuertey-nucleo_f767zi" but ideally should be generated from UUID if multiple devices would be deployed. 
+    // For now I will use "nuertey-nucleo_f767zi" but ideally should be
+    // generated from UUID if multiple devices would be deployed. 
+    static const std::string DEFAULT_MQTT_CLIENT_IDENTIFIER; 
     static const std::string DEFAULT_MQTT_USERNAME;          // Let's not forget authentication as security is important. 
     static const std::string DEFAULT_MQTT_PASSWORD;          // Let's not forget authentication as security is important.
-    static const uint16_t    DEFAULT_MQTT_BROKER_PORT = 1883;
     static const uint32_t    DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_MSECS = 200;
-    static const char * NUERTEY_ADDRESS_BOOK_MQTT_TOPIC;     // The Paho MQTT embedded client does not seem to like ...
-    static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC1;       // playing nice with the null appended to ...
-    static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC2;       // std::string::c_str() so rather use char *.
-    static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC3;
-    static const char * NUCLEO_F767ZI_IOT_MQTT_TOPIC4;
-    static const char * RELATIVE_TIME_MQTT_TOPIC;
-    static const char * ABSOLUTE_TIME_MQTT_TOPIC;
-    static const char * NUCLEO_F767ZI_CONVERSATION_MQTT_TOPIC;
+    
+    // 1 minute of failing to exchange packets with the Broker ought
+    // to be enough to tell us that there is something wrong with the socket.
+    static constexpr int32_t BLOCKING_SOCKET_TIMEOUT_MILLISECONDS{60000};
     
     NuerteyMQTTClient(NetworkInterface * pNetworkInterface, 
-                      const std::string & server = DEFAULT_MQTT_BROKER_ADDRESS, 
-              const uint16_t & port = DEFAULT_MQTT_BROKER_PORT);
+                      const std::string & server, const uint16_t & port);
     
     // TBD, Nuertey Odzeyem : Perhaps add code to detect spurious client 
     // disconnects and logic to reconnect if so, and on the fly.
@@ -96,18 +86,19 @@ public:
     bool Connect();
     void Disconnect();
 
+    // The Paho MQTT embedded client does not seem to like playing nice 
+    // with the null appended to std::string::c_str() so rather use char *.
     void Subscribe(const char * topic);
     void UnSubscribe(const char * topic);
-    
     void Publish(const char * topic);
     void Publish(const char * topic, MQTT::Message & data);
     // TBD, Nuertey Odzeyem : Maybe consider replacing pointer and size with mbed::Span. 
     void Publish(const char * topic, const void * data, const size_t & size); 
 
-    std::optional<std::string>    GetHostDomainName() const {return m_MQTTBrokerDomainName;}
-    std::string                   GetHostIPAddress() const {return m_MQTTBrokerAddress;}
-    uint16_t                      GetPortNumber() const {return m_MQTTBrokerPort;}     
-    bool                          IsConnected() const {return m_IsMQTTSessionEstablished;} 
+    std::string GetHostDomainName() const {return m_MQTTBrokerDomainName;}
+    std::string GetHostIPAddress() const {return m_MQTTBrokerAddress.value_or("(Null)");}
+    uint16_t    GetPortNumber() const {return m_MQTTBrokerPort;}     
+    bool        IsConnected() const {return m_IsMQTTSessionEstablished;} 
 
     // The intent of ::Yield() is to hand-over our execution context to 
     // the Paho MQTT Client library. While yield is executed that library 
@@ -120,15 +111,15 @@ public:
  
     static void MessageArrived(MQTT::MessageData & data);
         
-    static uint64_t                               m_ArrivedMessagesCount;
-    static uint64_t                               m_OldMessagesCount;
+    static uint64_t              m_ArrivedMessagesCount;
+    static uint64_t              m_OldMessagesCount;
 private:
-    NetworkInterface *                            m_pNetworkInterface;
-    MQTTNetwork                                   m_MQTTNetwork;
-    MQTT::Client<MQTTNetwork, Countdown, 1024, 5> m_PahoMQTTclient;       // Increase the maximum packet size to 1 Kbytes.
-                                                                          // Increase the maximum number of subscriptions to 5.
-    std::optional<std::string>                    m_MQTTBrokerDomainName; // Domain name would not always necessarily exist...
-    std::string                                   m_MQTTBrokerAddress;    // However IP Address always would.
-    uint16_t                                      m_MQTTBrokerPort;
-    bool                                          m_IsMQTTSessionEstablished;
+    NetworkInterface *           m_pNetworkInterface;
+    TCPSocket                    m_TheSocket; // This must definitely precede the MQTT client.
+    SocketAddress                m_TheSocketAddress;
+    MQTTClient                   m_PahoMQTTclient;
+    std::string                  m_MQTTBrokerDomainName; // Domain name will always exist.
+    std::optional<std::string>   m_MQTTBrokerAddress;    // However IP Address might not always exist...
+    uint16_t                     m_MQTTBrokerPort;
+    bool                         m_IsMQTTSessionEstablished;
 };

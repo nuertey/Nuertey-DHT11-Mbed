@@ -46,7 +46,8 @@
 #include "nsapi_types.h"
 #include "EthernetInterface.h"
 #include "MQTTClient.h"
-#include "NuerteyNTPClient.h"
+//#include "NuerteyNTPClient.h"
+#include "NTPClient.h"
 //#include "mbed_mem_trace.h"
 #include "randLIB.h"
 #include "mbed_events.h"   // thread and irq safe
@@ -64,14 +65,7 @@
 #error "[NOT_SUPPORTED] Socket Statistics not supported"
 #endif
 
-static const uint8_t     TOTAL_NUMBER_OF_HOURS_IN_A_DAY =   24;
-static const uint16_t    MAXIMUM_WRITE_RETRIES          =   20;
-static const uint16_t    MAXIMUM_READ_RETRIES           =   20; // Small timeout and many retries is preferred to... 
-static const uint32_t    DEFAULT_TCP_SOCKET_TIMEOUT     =   40; // let the full-duplex socket do its thing.
-static const uint32_t    DEFAULT_HTTP_SOCKET_TIMEOUT    =  100;
-static const uint32_t    DEFAULT_HTTP_RESPONSE_SIZE     =  256;
-static const uint32_t    MAXIMUM_HTTP_RESPONSE_SIZE     =  700;
-static const uint32_t    MAXIMUM_WEBSOCKET_FRAME_SIZE   =  200;
+using namespace std::chrono_literals;
     
 // These clocks should NOT be relied on in embedded systems. Rather, use the RTC. 
 using SystemClock_t         = std::chrono::system_clock;
@@ -84,14 +78,6 @@ using NanoSecs_t            = std::chrono::nanoseconds;
 using DoubleSecs_t          = std::chrono::duration<double>;
 using FloatingMilliSecs_t   = std::chrono::duration<double, std::milli>;
 using FloatingMicroSecs_t   = std::chrono::duration<double, std::micro>;
-
-static const uint32_t PRIME_TESTING_PERIOD_MSECS             =   2000;
-static const uint32_t SENSOR_ACQUISITION_PERIOD_MSECS        =  30000; 
-static const uint32_t HTTP_REQUEST_PERIOD_MSECS              =  15000;
-static const uint32_t WEBSOCKET_MESSAGING_PERIOD_MSECS       =  20000;
-static const uint32_t WEBSOCKET_STREAMING_PERIOD_MSECS       =  40000;
-static const uint32_t NETWORK_DISCONNECT_QUERY_PERIOD_MSECS  =   1000;
-static const uint32_t CLOUD_COMMUNICATIONS_EVENT_DELAY_MSECS =      3;
 
 enum class MQTTConnectionError_t : int8_t
 {
@@ -219,19 +205,26 @@ inline std::string ToString(const nsapi_size_or_error_t & key)
     
     return result;
 }
-
-enum class TimeTopic_t
-{
-    RELATIVE_TIME,
-    ABSOLUTE_TIME   
-};
-
-enum class SocketMode_t
-{
-    BLOCKING,
-    NON_BLOCKING   
-};
     
+template <typename T, typename U>
+struct TrueTypesEquivalent : std::is_same<typename std::decay<T>::type, U>::type
+{};
+
+template <typename E>
+constexpr auto ToUnderlyingType(E e) -> typename std::underlying_type<E>::type
+{
+    return static_cast<typename std::underlying_type<E>::type>(e);
+}
+
+template <typename E, typename V = unsigned long>
+constexpr auto ToEnum(V value) -> E
+{
+    return static_cast<E>(value);
+}
+
+//void DisplayLCDCapabilities();
+void DHT11SensorAcquisition();
+
 namespace Utility
 {
     extern std::string                      g_NetworkInterfaceInfo;
@@ -239,14 +232,7 @@ namespace Utility
     extern std::string                      g_BaseRegisterValues;
     extern std::string                      g_HeapStatistics;
 
-    extern EventQueue                       gs_MasterEventQueue;
-    extern int                              gs_NetworkDisconnectEventIdentifier;
-    extern int                              gs_SensorEventIdentifier;
-    extern int                              gs_HTTPEventIdentifier;
-    extern int                              gs_WebSocketEventIdentifier;
-    extern int                              gs_WebSocketStreamEventIdentifier;
-    extern int                              gs_PrimeEventIdentifier;
-    extern int                              gs_CloudCommunicationsEventIdentifier;
+    extern EventQueue *                     g_pMasterEventQueue;
 
     extern size_t                           g_MessageLength;
     extern std::unique_ptr<MQTT::Message>   g_pMessage;
@@ -254,29 +240,14 @@ namespace Utility
     extern PlatformMutex                    g_STDIOMutex;
     extern EthernetInterface                g_EthernetInterface;
     extern NetworkInterface *               g_pNetworkInterface;
-    //extern NTPClient                        g_NTPClient;
-    extern NuerteyNTPClient                 g_NTPClient;
+    extern NTPClient                        g_NTPClient;
+    //extern NuerteyNTPClient                 g_NTPClient;
 
     void NetworkStatusCallback(nsapi_event_t status, intptr_t param);
-    void NetworkDisconnectQuery();
     bool InitializeGlobalResources();
     void ReleaseGlobalResources();
-
-    template <typename T, typename U>
-    struct TrueTypesEquivalent : std::is_same<typename std::decay<T>::type, U>::type
-    {};
-
-    template <typename E>
-    constexpr auto ToUnderlyingType(E e) -> typename std::underlying_type<E>::type
-    {
-        return static_cast<typename std::underlying_type<E>::type>(e);
-    }
-
-    template <typename E, typename V = unsigned long>
-    constexpr auto ToEnum(V value) -> E
-    {
-        return static_cast<E>(value);
-    }
+    void DisplayStatistics();
+    void RetrieveNTPTime();
 
     // This custom clock type obtains the time from RTC too whilst noting the Processor speed.
     struct NucleoF767ZIClock_t
@@ -452,8 +423,10 @@ namespace Utility
                 {
                     printf("Error! On DNS lookup, Network returned: [%d] -> %s\n", retVal, ToString(retVal).c_str());
                 }
-
-                ipAddress = pTheSocketAddress->get_ip_address();
+                else
+                {
+                    ipAddress = pTheSocketAddress->get_ip_address();
+                }
             }
             else
             {
@@ -495,6 +468,16 @@ namespace Utility
     const auto ComposeSystemStatistics = []()
     {
         auto [ip, netmask, gateway, mac] = GetNetworkInterfaceProfile(g_pNetworkInterface);
+        
+        printf("Particular Network Interface IP address: %s\n", ip.value_or("(null)"));
+        printf("Particular Network Interface Netmask: %s\n", netmask.value_or("(null)"));
+        printf("Particular Network Interface Gateway: %s\n", gateway.value_or("(null)"));
+        printf("Particular Network Interface MAC Address: %s\n", mac.value_or("(null)"));
+        
+        std::string ipString = ip.value_or("(null)");
+        std::string netmaskString = netmask.value_or("(null)");
+        std::string gatewayString = gateway.value_or("(null)");
+        std::string macString = mac.value_or("(null)");
 
         mbed_stats_sys_t stats;
         mbed_stats_sys_get(&stats);
@@ -525,10 +508,10 @@ namespace Utility
         
         // Note that ternary operators must work on the same type for the
         // second and third operands, or implicitly convertible types anyway.
-        jsonObject1["[c] MAC Address"] = picojson::value(std::string(mac.value_or("(Null)")));
-        jsonObject1["[d] IP Address"] = picojson::value(std::string(ip.value_or("(Null)")));
-        jsonObject1["[e] Netmask"] = picojson::value(std::string(netmask.value_or("(Null)")));
-        jsonObject1["[f] Gateway"] = picojson::value(std::string(gateway.value_or("(Null)")));
+        jsonObject1["[c] MAC Address"] = picojson::value(macString);
+        jsonObject1["[d] IP Address"] = picojson::value(ipString);
+        jsonObject1["[e] Netmask"] = picojson::value(netmaskString);
+        jsonObject1["[f] Gateway"] = picojson::value(gatewayString);
         
         #ifdef MBED_MAJOR_VERSION
             jsonObject2["[g] MBED OS Version"] = picojson::value(
