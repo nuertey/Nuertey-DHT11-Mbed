@@ -23,7 +23,7 @@ class NuerteyNTPClient
     static const uint16_t    DEFAULT_NTP_SERVER_PORT          =  123;
     static const uint16_t    DEFAULT_NTP_CLIENT_PORT          =  0; // Signifying a random port.
     
-    static constexpr int32_t BLOCKING_SOCKET_TIMEOUT_MILLISECONDS{30000};
+    static constexpr int32_t BLOCKING_SOCKET_TIMEOUT_MILLISECONDS{60000};
     
     // Difference between a UNIX timestamp (Starting Jan, 1st 1970) and a NTP timestamp (Starting Jan, 1st 1900)
     static const uint32_t    NTP_VERSUS_UNIX_TIMESTAMP_DELTA  =  2208988800ull;

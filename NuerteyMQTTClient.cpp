@@ -13,16 +13,13 @@ const uint32_t    NuerteyMQTTClient::DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_M
 uint64_t    NuerteyMQTTClient::m_ArrivedMessagesCount(0);
 uint64_t    NuerteyMQTTClient::m_OldMessagesCount(0);
 
-NuerteyMQTTClient::NuerteyMQTTClient(NetworkInterface * pNetworkInterface, 
-                                     const std::string & server, const uint16_t & port)
-    : m_pNetworkInterface(pNetworkInterface)
-    , m_PahoMQTTclient(&m_TheSocket)
-    , m_MQTTBrokerDomainName(server)
-    , m_MQTTBrokerAddress(std::nullopt)
+NuerteyMQTTClient::NuerteyMQTTClient(const std::string & server, const uint16_t & port)
+    : m_MQTTBrokerDomainName(server)
     , m_MQTTBrokerPort(port)
+    , m_PahoMQTTclient(&Utility::m_TheSocket) // This socket MUST be already connected or else HardFault!!! 
     , m_IsMQTTSessionEstablished(false)
 {
-    mbed_trace_init();
+    //mbed_trace_init();
 }
 
 NuerteyMQTTClient::~NuerteyMQTTClient()
@@ -31,67 +28,9 @@ NuerteyMQTTClient::~NuerteyMQTTClient()
 
 bool NuerteyMQTTClient::Connect()
 {
+    printf("Running NuerteyMQTTClient::Connect() ... \r\n");
+    
     bool result = false;
-    
-    // The socket has to be opened and connected in order for the client
-    // to be able to interact with the broker.
-    nsapi_error_t rc = m_TheSocket.open(m_pNetworkInterface);
-    if (rc != NSAPI_ERROR_OK)
-    {
-        printf("Error! TCPSocket.open() returned: \
-            [%d] -> %s\r\n", rc, ToString(rc).c_str());
-
-        // Abandon attempting to connect to the socket.                
-        return result;
-    }
-    
-    // Set timeout on blocking socket operations.
-    //
-    // Initially all sockets have unbounded timeouts. NSAPI_ERROR_WOULD_BLOCK
-    // is returned if a blocking operation takes longer than the specified timeout.
-    m_TheSocket.set_blocking(true);
-    //m_TheSocket.set_timeout(BLOCKING_SOCKET_TIMEOUT_MILLISECONDS);
-    
-    auto ipAddress = Utility::ResolveAddressIfDomainName(m_MQTTBrokerDomainName
-                                                         , m_pNetworkInterface
-                                                         , &m_TheSocketAddress);
-    
-    if (ipAddress)
-    {
-        std::swap(m_MQTTBrokerAddress, ipAddress);
-    }
-    else
-    {
-        printf("Error! Utility::ResolveAddressIfDomainName() failed.\r\n");
-
-        // Abandon attempting to connect to the socket.                
-        return result; 
-    }
-    
-    m_TheSocketAddress.set_port(m_MQTTBrokerPort);
-    
-    printf("Connecting to \"%s\" as resolved to: \"%s:%d\" ...\n",
-        m_MQTTBrokerDomainName.c_str(), 
-        m_MQTTBrokerAddress.value().c_str(), 
-        m_MQTTBrokerPort);
-        
-    // The new MbedOS-MQTT API expects to receive a pointer to a configured and 
-    // connected socket. This socket will be used for further communication.
-    rc = m_TheSocket.connect(m_TheSocketAddress);
-
-    if (rc != NSAPI_ERROR_OK)
-    {
-        printf("Error! TCPSocket.connect() to Broker returned:\
-            [%d] -> %s\n", rc, ToString(rc).c_str());
-            
-        // Abandon attempting to connect to the socket.               
-        return result;
-    }
-    else
-    {   
-        printf("Success! Connected to Socket at \"%s\" as resolved to: \"%s:%d\"\n", 
-            m_MQTTBrokerDomainName.c_str(), m_MQTTBrokerAddress.value().c_str(), m_MQTTBrokerPort);
-    }
 
     // Note: Default values are not defined for members of MQTTClient_connectOptions
     // so it is good practice to specify all settings. If the MQTTClient_connectOptions
@@ -129,20 +68,20 @@ bool NuerteyMQTTClient::Connect()
     data.keepAliveInterval = 7200;
      
     printf("\r\nm_PahoMQTTclient connecting to MQTT Broker at: \"%s:%d\" ...", 
-        m_MQTTBrokerAddress.value().c_str(), m_MQTTBrokerPort);
+        m_MQTTBrokerDomainName.c_str(), m_MQTTBrokerPort);
     
-    int retVal = MQTT::FAILURE;
-    if ((retVal = m_PahoMQTTclient.connect(data)) != MQTT::SUCCESS)
+    nsapi_size_or_error_t retVal;
+    if ((retVal = m_PahoMQTTclient.connect(data)) != NSAPI_ERROR_OK)
     {
-        tr_error("Error! nm_PahoMQTTclient.connect() returned: [%d] -> %s\n", 
-              retVal, ToString(ToEnum<MQTTConnectionError_t, int>(retVal)).c_str());
+        printf("Error! nm_PahoMQTTclient.connect() returned: [%d] -> %s\n", 
+              retVal, ToString(retVal).c_str());
     }
     else
     {
         m_IsMQTTSessionEstablished = true;
         m_ArrivedMessagesCount = 0;
         printf("\r\n\r\nMQTT session established with broker at [%s:%d]\r\n", 
-            m_MQTTBrokerAddress.value().c_str(), m_MQTTBrokerPort);
+            m_MQTTBrokerDomainName.c_str(), m_MQTTBrokerPort);
         result = true;
     }
 
@@ -162,7 +101,7 @@ void NuerteyMQTTClient::Disconnect()
         }
 
         printf("\r\nClosing socket... ");
-        nsapi_error_t rc = m_TheSocket.close();
+        nsapi_error_t rc = Utility::m_TheSocket.close();
         if (rc != NSAPI_ERROR_OK)
         {
             printf("\r\n\r\nError! TCP.disconnect() returned: [%d] -> %s\n", rc, ToString(rc).c_str());

@@ -46,10 +46,7 @@
 
 #include <string>
 #include <cstdint>
-#include <optional>
-#include "NetworkInterface.h"
 #include <MQTTClientMbedOs.h>
-#include "TCPSocket.h"
 #include "Utilities.h"
 
 class NuerteyMQTTClient 
@@ -62,12 +59,7 @@ public:
     static const std::string DEFAULT_MQTT_PASSWORD;          // Let's not forget authentication as security is important.
     static const uint32_t    DEFAULT_TIME_TO_WAIT_FOR_RECEIVED_MESSAGE_MSECS = 200;
     
-    // 1 minute of failing to exchange packets with the Broker ought
-    // to be enough to tell us that there is something wrong with the socket.
-    static constexpr int32_t BLOCKING_SOCKET_TIMEOUT_MILLISECONDS{60000};
-    
-    NuerteyMQTTClient(NetworkInterface * pNetworkInterface, 
-                      const std::string & server, const uint16_t & port);
+    NuerteyMQTTClient(const std::string & server, const uint16_t & port);
     
     // TBD, Nuertey Odzeyem : Perhaps add code to detect spurious client 
     // disconnects and logic to reconnect if so, and on the fly.
@@ -96,7 +88,6 @@ public:
     void Publish(const char * topic, const void * data, const size_t & size); 
 
     std::string GetHostDomainName() const {return m_MQTTBrokerDomainName;}
-    std::string GetHostIPAddress() const {return m_MQTTBrokerAddress.value_or("(Null)");}
     uint16_t    GetPortNumber() const {return m_MQTTBrokerPort;}     
     bool        IsConnected() const {return m_IsMQTTSessionEstablished;} 
 
@@ -114,12 +105,8 @@ public:
     static uint64_t              m_ArrivedMessagesCount;
     static uint64_t              m_OldMessagesCount;
 private:
-    NetworkInterface *           m_pNetworkInterface;
-    TCPSocket                    m_TheSocket; // This must definitely precede the MQTT client.
-    SocketAddress                m_TheSocketAddress;
-    MQTTClient                   m_PahoMQTTclient;
     std::string                  m_MQTTBrokerDomainName; // Domain name will always exist.
-    std::optional<std::string>   m_MQTTBrokerAddress;    // However IP Address might not always exist...
     uint16_t                     m_MQTTBrokerPort;
+    MQTTClient                   m_PahoMQTTclient;
     bool                         m_IsMQTTSessionEstablished;
 };

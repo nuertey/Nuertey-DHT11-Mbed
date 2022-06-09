@@ -46,12 +46,13 @@
 #include "nsapi_types.h"
 #include "EthernetInterface.h"
 #include "MQTTClient.h"
-//#include "NuerteyNTPClient.h"
-#include "NTPClient.h"
+#include "NuerteyNTPClient.h"
+//#include "NTPClient.h"
 //#include "mbed_mem_trace.h"
 #include "randLIB.h"
 #include "mbed_events.h"   // thread and irq safe
 #include "mbed.h"
+#include "TCPSocket.h"
 
 #if !defined(MBED_SYS_STATS_ENABLED)
 #error "[NOT_SUPPORTED] MBED System Statistics Not Enabled"
@@ -78,6 +79,10 @@ using NanoSecs_t            = std::chrono::nanoseconds;
 using DoubleSecs_t          = std::chrono::duration<double>;
 using FloatingMilliSecs_t   = std::chrono::duration<double, std::milli>;
 using FloatingMicroSecs_t   = std::chrono::duration<double, std::micro>;
+
+// 1 minute of failing to exchange packets with the Broker ought
+// to be enough to tell us that there is something wrong with the socket.
+static constexpr int32_t BLOCKING_SOCKET_TIMEOUT_MILLISECONDS{60000};
 
 enum class MQTTConnectionError_t : int8_t
 {
@@ -223,6 +228,7 @@ constexpr auto ToEnum(V value) -> E
 }
 
 //void DisplayLCDCapabilities();
+bool InitializeSocket(const std::string & server, const uint16_t & port);
 void DHT11SensorAcquisition();
 
 namespace Utility
@@ -240,8 +246,12 @@ namespace Utility
     extern PlatformMutex                    g_STDIOMutex;
     extern EthernetInterface                g_EthernetInterface;
     extern NetworkInterface *               g_pNetworkInterface;
-    extern NTPClient                        g_NTPClient;
-    //extern NuerteyNTPClient                 g_NTPClient;
+    
+    extern TCPSocket                        m_TheSocket; // This must definitely precede the MQTT client.
+    extern SocketAddress                    m_TheSocketAddress;
+    
+    //extern NTPClient                        g_NTPClient;
+    extern NuerteyNTPClient                 g_NTPClient;
 
     void NetworkStatusCallback(nsapi_event_t status, intptr_t param);
     bool InitializeGlobalResources();
