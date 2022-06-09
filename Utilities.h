@@ -47,7 +47,6 @@
 #include "EthernetInterface.h"
 #include "MQTTClient.h"
 #include "NuerteyNTPClient.h"
-//#include "NTPClient.h"
 //#include "mbed_mem_trace.h"
 #include "randLIB.h"
 #include "mbed_events.h"   // thread and irq safe
@@ -250,7 +249,6 @@ namespace Utility
     extern TCPSocket                        m_TheSocket; // This must definitely precede the MQTT client.
     extern SocketAddress                    m_TheSocketAddress;
     
-    //extern NTPClient                        g_NTPClient;
     extern NuerteyNTPClient                 g_NTPClient;
 
     void NetworkStatusCallback(nsapi_event_t status, intptr_t param);

@@ -180,7 +180,6 @@ namespace Utility
     TCPSocket                        m_TheSocket{}; // This must definitely precede the MQTT client.
     SocketAddress                    m_TheSocketAddress{};
     
-    //NTPClient                        g_NTPClient(&g_EthernetInterface);
     NuerteyNTPClient                 g_NTPClient(&g_EthernetInterface);
 
     void NetworkStatusCallback(nsapi_event_t status, intptr_t param)
@@ -288,9 +287,6 @@ namespace Utility
         printf("Retrieving NTP time from \"2.pool.ntp.org\" server...\n");
         g_STDIOMutex.unlock();
         
-        //g_NTPClient.set_server("2.pool.ntp.org", 123);
-        //time_t now = g_NTPClient.get_timestamp();
-        //set_time(now);
         g_NTPClient.SynchronizeRTCTimestamp();
         
         // Just to allow things to stabilize:
