@@ -179,7 +179,14 @@ inline auto make_error_condition(SensorStatus_t e)
 struct DHT11_t {};
 struct DHT22_t {};
 
-template <typename T>
+// Intrinsically enforce our pin requirements with C++20 Concepts.
+template <PinName thePinName>
+concept IsValidPinName = (thePinName != NC);
+
+// Check and enforce restrictions on device pin at an earlier phase
+// --compile-time--instead of at the more costlier runtime phase.
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
 class NuerteyDHT11Device
 {
     static_assert(TrueTypesEquivalent<T, DHT11_t>::value
@@ -195,7 +202,7 @@ public:
     using DataFrameBytes_t = std::array<uint8_t, SINGLE_BUS_DATA_FRAME_SIZE_BYTES>;
     using DataFrameBits_t  = std::array<uint8_t, MAXIMUM_DATA_FRAME_SIZE_BITS>;
 
-    NuerteyDHT11Device(PinName thePinName);
+    NuerteyDHT11Device();
 
     NuerteyDHT11Device(const NuerteyDHT11Device&) = delete;
     NuerteyDHT11Device& operator=(const NuerteyDHT11Device&) = delete;
@@ -235,10 +242,12 @@ private:
     float                m_TheLastHumidity;
 };
 
-template <typename T>
-NuerteyDHT11Device<T>::NuerteyDHT11Device(PinName thePinName)
-    : m_TheDataPinName(thePinName)
-{
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+NuerteyDHT11Device<T, thePinName>::NuerteyDHT11Device()
+{   
+    m_TheDataPinName = thePinName;
+    
     // Using this value ensures that time(NULL) - m_TheLastReadTime will
     // be >= MINIMUM_SAMPLING_PERIOD_SECONDS the first time. Note that  
     // this assignment does wrap around, but so will the subtraction.
@@ -248,13 +257,15 @@ NuerteyDHT11Device<T>::NuerteyDHT11Device(PinName thePinName)
     m_TheLastReadTime = time(NULL) - MINIMUM_SAMPLING_PERIOD_SECONDS; 
 }
 
-template <typename T>
-NuerteyDHT11Device<T>::~NuerteyDHT11Device()
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+NuerteyDHT11Device<T, thePinName>::~NuerteyDHT11Device()
 {
 }
 
-template <typename T>
-std::error_code NuerteyDHT11Device<T>::ReadData()
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+std::error_code NuerteyDHT11Device<T, thePinName>::ReadData()
 {
     // Check if sensor was read less than two seconds ago and return 
     // early to use last reading.
@@ -411,8 +422,9 @@ std::error_code NuerteyDHT11Device<T>::ReadData()
     return errorCode;
 }
 
-template <typename T>
-SensorStatus_t NuerteyDHT11Device<T>::ExpectPulse(DigitalInOut & theIO, const int & level, const int & max_time)
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+SensorStatus_t NuerteyDHT11Device<T, thePinName>::ExpectPulse(DigitalInOut & theIO, const int & level, const int & max_time)
 {
     auto result = SensorStatus_t::SUCCESS;
  
@@ -433,8 +445,9 @@ SensorStatus_t NuerteyDHT11Device<T>::ExpectPulse(DigitalInOut & theIO, const in
     return result;
 }
 
-template <typename T>
-SensorStatus_t NuerteyDHT11Device<T>::ValidateChecksum()
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+SensorStatus_t NuerteyDHT11Device<T, thePinName>::ValidateChecksum()
 {
     auto result = SensorStatus_t::ERROR_BAD_CHECKSUM;
     
@@ -449,8 +462,9 @@ SensorStatus_t NuerteyDHT11Device<T>::ValidateChecksum()
     return result;
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::CalculateTemperature() const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::CalculateTemperature() const
 {
     auto v = 0;
 
@@ -475,8 +489,9 @@ float NuerteyDHT11Device<T>::CalculateTemperature() const
     return (static_cast<float>(v));
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::CalculateHumidity() const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::CalculateHumidity() const
 {
     auto v = 0;
 
@@ -496,26 +511,30 @@ float NuerteyDHT11Device<T>::CalculateHumidity() const
     return (static_cast<float>(v));
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::ConvertCelsiusToFarenheit(const float & celsius) const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::ConvertCelsiusToFarenheit(const float & celsius) const
 {
     return ((celsius * 9/5) + 32);
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::ConvertCelsiusToKelvin(const float & celsius) const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::ConvertCelsiusToKelvin(const float & celsius) const
 {
     return (celsius + 273.15);
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::GetHumidity() const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::GetHumidity() const
 {
     return m_TheLastHumidity;
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::GetTemperature(const TemperatureScale_t & Scale) const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::GetTemperature(const TemperatureScale_t & Scale) const
 {
     auto result = 0.0;
 
@@ -535,8 +554,9 @@ float NuerteyDHT11Device<T>::GetTemperature(const TemperatureScale_t & Scale) co
     return result;
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::CalculateDewPoint(const float & celsius, const float & humidity) const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::CalculateDewPoint(const float & celsius, const float & humidity) const
 {
     // dewPoint function NOAA
     // reference: http://wahiduddin.net/calc/density_algorithms.htm
@@ -552,8 +572,9 @@ float NuerteyDHT11Device<T>::CalculateDewPoint(const float & celsius, const floa
     return (241.88 * tempVar) / (17.558 - tempVar);
 }
 
-template <typename T>
-float NuerteyDHT11Device<T>::CalculateDewPointFast(const float & celsius, const float & humidity) const
+template <typename T, PinName thePinName>
+    requires IsValidPinName<thePinName>
+float NuerteyDHT11Device<T, thePinName>::CalculateDewPointFast(const float & celsius, const float & humidity) const
 {
     // delta max = 0.6544 wrt dewPoint()
     // 5x faster than dewPoint()

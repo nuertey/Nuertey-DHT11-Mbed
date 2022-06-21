@@ -102,7 +102,7 @@ static constexpr MilliSecs_t DHT11_DEVICE_SAMPLING_PERIOD          = 3000ms; // 
 // Pin Name : D3        * Arduino-equivalent pin name
 // STM32 Pin: PE13
 // Signal   : TIMER_A_PWM3
-NuerteyDHT11Device<DHT11_t> g_DHT11(PE_13);
+NuerteyDHT11Device<DHT11_t, PE_13> g_DHT11{};
 
 // LCD 16x2 Interfacing With ARM MBED. LCD 16x2 controlled via the 4-bit
 // interface. Note that for STM32 Nucleo-144 boards, the ST Zio connectors 
