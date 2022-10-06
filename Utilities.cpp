@@ -113,43 +113,43 @@ NuerteyDHT11Device<DHT11_t, PE_13> g_DHT11{};
 // the STM32 Zio connectors, I isolated the following pins as the 
 // Arduino-equivalent pins for the LCD_16x2 library:
 //
-// Connector: CN7 
-// Pin      : 16 
-// Pin Name : D10       * Arduino-equivalent pin name
-// STM32 Pin: PD14
-// Signal   : SPI_A_CS/TIM_B_PWM3
+// Connector: CN9 
+// Pin      : 28 
+// Pin Name : D63       * Arduino-equivalent pin name
+// STM32 Pin: PF9
+// Signal   : SAI_B_FS
 //
-// Connector: CN7 
-// Pin      : 14 
-// Pin Name : D11       * Arduino-equivalent pin name
-// STM32 Pin: PA7
-// Signal   : SPI_A_MOSI/TIM_E_PWM1
+// Connector: CN9 
+// Pin      : 26 
+// Pin Name : D62       * Arduino-equivalent pin name
+// STM32 Pin: PF7
+// Signal   : SAI_B_MCLK
 //
-// Connector: CN7 
-// Pin      : 12 
-// Pin Name : D12       * Arduino-equivalent pin name
-// STM32 Pin: PA6
-// Signal   : SPI_A_MISO 
+// Connector: CN9 
+// Pin      : 24 
+// Pin Name : D61       * Arduino-equivalent pin name
+// STM32 Pin: PF8
+// Signal   : SAI_B_SCK 
 //
-// Connector: CN7 
-// Pin      : 10 
-// Pin Name : D13        * Arduino-equivalent pin name
-// STM32 Pin: PA5
-// Signal   : SPI_A_SCK
+// Connector: CN9 
+// Pin      : 17 
+// Pin Name : D70        * Arduino-equivalent pin name
+// STM32 Pin: PF2
+// Signal   : I2C_B_SMBA
 //
-// Connector: CN7 
-// Pin      : 4 
-// Pin Name : D14        * Arduino-equivalent pin name
-// STM32 Pin: PB9
-// Signal   : I2C_A_SDA
+// Connector: CN9 
+// Pin      : 19 
+// Pin Name : D69        * Arduino-equivalent pin name
+// STM32 Pin: PF1
+// Signal   : I2C_B_SCL
 //
-// Connector: CN7 
-// Pin      : 2 
-// Pin Name : D15        * Arduino-equivalent pin name
-// STM32 Pin: PB8
-// Signal   : I2C_A_SCL
+// Connector: CN9 
+// Pin      : 21 
+// Pin Name : D68        * Arduino-equivalent pin name
+// STM32 Pin: PF0
+// Signal   : I2C_B_SDA
 //
-//LCD g_LCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
+//LCD g_LCD16x2(D63, D62, D61, D70, D69, D68, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
         
 // As per my ARM NUCLEO-F767ZI specs:        
 DigitalOut        g_LEDGreen(LED1);
@@ -478,7 +478,7 @@ void DHT11SensorAcquisition()
         {
             // Let us see if a local instantiation of the LCD driver each 
             // iteration might give more better and consistent results. 
-            LCD theLCD16x2(D10, D11, D12, D13, D14, D15, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
+            LCD theLCD16x2(D63, D62, D61, D70, D69, D68, LCD16x2); // LCD designated pins: RS, E, D4, D5, D6, D7, LCD type
             PrepareRow1(&theLCD16x2);
             
             // Indicate that we are reading from DHT11 with green LED.
